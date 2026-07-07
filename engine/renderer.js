@@ -18,8 +18,17 @@ export class Renderer {
     const headImg = this.#assets.getByIndex(player.textureHead);
     const bodyImg = this.#assets.getByIndex(player.textureBody);
 
-    if (bodyImg) ctx.drawImage(bodyImg, px, py, TILE_SIZE, TILE_SIZE);
-    if (headImg) ctx.drawImage(headImg, px, py, TILE_SIZE, TILE_SIZE);
+    ctx.save();
+    if (player.facing < 0) {
+      ctx.translate(px + TILE_SIZE / 2, 0);
+      ctx.scale(-1, 1);
+      if (bodyImg) ctx.drawImage(bodyImg, -TILE_SIZE / 2, py, TILE_SIZE, TILE_SIZE);
+      if (headImg) ctx.drawImage(headImg, -TILE_SIZE / 2, py, TILE_SIZE, TILE_SIZE);
+    } else {
+      if (bodyImg) ctx.drawImage(bodyImg, px, py, TILE_SIZE, TILE_SIZE);
+      if (headImg) ctx.drawImage(headImg, px, py, TILE_SIZE, TILE_SIZE);
+    }
+    ctx.restore();
   }
 
   /**

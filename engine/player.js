@@ -8,6 +8,9 @@ export class Player {
   food = 100;
   water = 100;
 
+  /** Which direction the player faces: 1 = right, -1 = left */
+  facing = 1;
+
   #animation;
   #headTexture = TEXTURES.HEAD_1;
   #bodyFrames = [
@@ -48,6 +51,10 @@ export class Player {
     const speed = PLAYER_SPEED * delta;
     this.x += dx * speed;
     this.y += dy * speed;
+
+    // Update facing direction (based on horizontal input)
+    if (dx < 0) this.facing = -1;
+    else if (dx > 0) this.facing = 1;
 
     const moving = dx !== 0 || dy !== 0;
     if (moving) {
