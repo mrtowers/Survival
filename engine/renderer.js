@@ -1,5 +1,6 @@
 import { TILE_SIZE } from './constants.js';
 import { canvas, ctx } from './canvas.js';
+import { getItemIcon } from './item-icons.js';
 
 export class Renderer {
   /** @type {import('./asset-loader.js').AssetLoader} */
@@ -98,25 +99,25 @@ export class Renderer {
         if (!item.quantity) continue;
         const sx = Math.round(item.x - player.x + canvas.width / 2);
         const sy = Math.round(item.y - player.y + canvas.height / 2);
-        const s = Math.round(14 * item.scale);
 
         ctx.save();
         ctx.translate(sx, sy);
         ctx.rotate(item.rotation);
 
-        // Square
-        ctx.fillStyle = item.color;
-        ctx.fillRect(-s / 2, -s / 2, s, s);
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(-s / 2, -s / 2, s, s);
+        // Texture
+        const tex = getItemIcon(item.itemType);
+        const drawS = Math.round(14 * item.scale);
+        ctx.drawImage(tex, -drawS / 2, -drawS / 2, drawS, drawS);
 
         // Quantity label
         ctx.rotate(-item.rotation);
         ctx.fillStyle = '#fff';
-        ctx.font = `${Math.round(11 * item.scale)}px monospace`;
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 2;
+        ctx.font = `bold ${Math.round(11 * item.scale)}px monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        ctx.strokeText(item.quantity, 0, 1);
         ctx.fillText(item.quantity, 0, 1);
 
         ctx.restore();

@@ -1,5 +1,6 @@
 import { ITEMS } from './items.js';
 import { canvas } from './canvas.js';
+import { getItemIcon } from './item-icons.js';
 
 const MAX_STACK = 999;
 const HOTBAR_SIZE = 9;
@@ -406,7 +407,6 @@ export class Inventory {
   #drawDraggedItem(ctx) {
     if (!this.#dragSrc) return;
     const d = this.#dragSrc;
-    const item = ITEMS[d.type];
     const size = 36;
 
     ctx.save();
@@ -417,19 +417,24 @@ export class Inventory {
     roundRect(ctx, -size / 2 + 2, -size / 2 + 2, size, size, 4);
     ctx.fill();
 
-    // Color square
-    ctx.fillStyle = item.color;
+    // Texture
+    const tex = getItemIcon(d.type);
+    ctx.drawImage(tex, -size / 2, -size / 2, size, size);
+
+    // Border
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.lineWidth = 2;
     roundRect(ctx, -size / 2, -size / 2, size, size, 4);
-    ctx.fill();
     ctx.stroke();
 
     // Count
     ctx.fillStyle = '#fff';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.lineWidth = 2;
     ctx.font = 'bold 13px monospace';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
+    ctx.strokeText(String(d.count), size / 2 - 2, size / 2 - 2);
     ctx.fillText(String(d.count), size / 2 - 2, size / 2 - 2);
 
     ctx.restore();
@@ -449,18 +454,22 @@ export class Inventory {
   #drawSlotContent(ctx, x, y, sz, slot) {
     const item = ITEMS[slot.type];
     const pad = Math.round(sz / 10);
-    const r = Math.max(2, Math.round(sz / 12));
-    const fontSize = Math.round(sz / 3);
+    const iconSize = sz - pad;
 
-    ctx.fillStyle = item.color;
-    roundRect(ctx, x + pad / 2, y + pad / 2, sz - pad, sz - pad, r);
-    ctx.fill();
+    // Draw item texture scaled to slot
+    const tex = getItemIcon(slot.type);
+    ctx.drawImage(tex, x + pad / 2, y + pad / 2, iconSize, iconSize);
 
+    // Count with outline
     ctx.fillStyle = '#fff';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.lineWidth = 2;
+    const fontSize = Math.round(sz / 3.2);
     ctx.font = `bold ${fontSize}px monospace`;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(String(slot.count), x + sz - pad, y + sz - pad);
+    ctx.strokeText(String(slot.count), x + sz - pad / 2, y + sz - pad / 2);
+    ctx.fillText(String(slot.count), x + sz - pad / 2, y + sz - pad / 2);
   }
 }
 
