@@ -293,6 +293,17 @@ async function start() {
 
   map.generate();
   birds.setTrees(map.getTrees());
+  birds.onLand = (tree) => {
+    // Micro-shake the tree
+    tree.shake = { time: 0.3, offsetX: 0, offsetY: 0, intensity: 3 };
+    // Falling leaves
+    particles.emit(tree.x - TILE_SIZE / 2, tree.y - TILE_SIZE, 6, {
+      color: '#3A7D2C',
+      speed: 100,
+      life: 0.8,
+      size: 3,
+    });
+  };
   running = true;
   lastTime = performance.now();
   requestAnimationFrame(tick);

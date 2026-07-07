@@ -12,13 +12,18 @@ class Bird {
   y;
   vx = 0;
   vy = 0;
-  state = 'flying'; // 'flying' | 'perching' | 'fleeing'
+  state = 'flying'; // 'flying' | 'landing' | 'perching' | 'fleeing'
   stateTimer = 0;
   wingFrame = 0;
   wingTimer = 0;
   facingLeft = false;
   visible = true;
   name = 'bird';
+  /** Target position when landing */
+  targetX = 0;
+  targetY = 0;
+  /** Tree the bird is landing on */
+  targetTree = null;
 
   /** Depth for Y-sorted rendering */
   get renderDepth() {
@@ -40,6 +45,8 @@ export class BirdManager {
   #birds = [];
   /** @type {import('./game-object.js').GameObject[]} */
   #trees = [];
+  /** Callback when a bird lands on a tree: (tree: GameObject) => void */
+  onLand = null;
 
   /**
    * @param {import('./game-object.js').GameObject[]} trees
@@ -74,6 +81,9 @@ export class BirdManager {
       switch (bird.state) {
         case 'flying':
           this.#updateFlying(bird, dt, distToPlayer);
+          break;
+        case 'landing':
+          this.#updateLanding(bird, dt, distToPlayer);
           break;
         case 'perching':
           this.#updatePerching(bird, dt, distToPlayer);
@@ -160,13 +170,12 @@ export class BirdManager {
       if (Math.random() < 0.3) {
         const tree = this.#findNearbyTree(bird.x, bird.y);
         if (tree) {
-          bird.state = 'perching';
-          bird.stateTimer = 3 + Math.random() * 6;
-          // Place bird in the tree crown
-          bird.x = tree.x + (Math.random() - 0.5) * TILE_SIZE * 0.4;
-          bird.y = tree.y - TILE_SIZE * 0.8 + (Math.random() - 0.5) * TILE_SIZE * 0.3;
-          bird.vx = 0;
-          bird.vy = 0;
+          // Begin smooth landing approach
+          bird.state = 'landing';
+          bird.targetTree = tree;
+          bird.targetX = tree.x + (Math.random() - 0.5) * TILE_SIZE * 0.4;
+          bird.targetY = tree.y - TILE_SIZE * 0.8 + (Math.random() - 0.5) * TILE_SIZE * 0.3;
+          bird.stateTimer = 1 + Math.random() * 1.5; // time to reach target
           return;
         }
       }
@@ -179,6 +188,55 @@ export class BirdManager {
 
     bird.x += bird.vx * dt;
     bird.y += bird.vy * dt;
+    if (Math.abs(bird.vx) > Math.abs(bird.vy)) {
+      bird.facingLeft = bird.vx < 0;
+    }
+  }
+  /**
+   * Smoothly approach a tree to perch on it.
+   * @param {Bird} bird
+   * @param {number} dt
+   * @param {number} distToPlayer
+   */
+  #updateLanding(bird, dt, distToPlayer) {
+    // Flee if player is close
+    if (distToPlayer < FLEE_DISTANCE) {
+      bird.state = 'fleeing';
+      bird.stateTimer = 0.5 + Math.random() * 1.5;
+      bird.targetTree = null;
+      return;
+    }
+
+    bird.stateTimer -= dt;
+
+    const tx = bird.targetX - bird.x;
+    const ty = bird.targetY - bird.y;
+    const dist = Math.sqrt(tx * tx + ty * ty);
+
+    if (dist < 5 || bird.stateTimer <= 0) {
+      // Arrived! Land and trigger effects
+      bird.x = bird.targetX;
+      bird.y = bird.targetY;
+      bird.vx = 0;
+      bird.vy = 0;
+      bird.state = 'perching';
+      bird.stateTimer = 3 + Math.random() * 6;
+
+      // Shake the tree and drop leaves
+      if (bird.targetTree && this.onLand) {
+        this.onLand(bird.targetTree);
+      }
+      bird.targetTree = null;
+      return;
+    }
+
+    // Fly toward target at a reduced speed with easing
+    const speed = Math.min(FLY_SPEED * 1.2, dist * 2);
+    bird.vx = (tx / dist) * speed;
+    bird.vy = (ty / dist) * speed;
+    bird.x += bird.vx * dt;
+    bird.y += bird.vy * dt;
+
     if (Math.abs(bird.vx) > Math.abs(bird.vy)) {
       bird.facingLeft = bird.vx < 0;
     }
