@@ -27,6 +27,30 @@ export class Renderer {
    * @param {number} playerX
    * @param {number} playerY
    */
+  #renderBirdShadow(bird, playerX, playerY) {
+    const sx = Math.round(bird.x - playerX + canvas.width / 2);
+    const sy = Math.round(bird.y - playerY + canvas.height / 2);
+
+    // Only render if on screen
+    if (sx < -20 || sx > canvas.width + 20 || sy < -20 || sy > canvas.height + 20) return;
+
+    const shadowSize = Math.max(5, 12 - bird.height * 0.008);
+    const alpha = Math.max(0.15, 0.45 - bird.height * 0.002);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(sx + 2, sy + 4, shadowSize, shadowSize * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /**
+   * @param {import('./bird.js').Bird} bird
+   * @param {number} playerX
+   * @param {number} playerY
+   */
   #renderBird(bird, playerX, playerY) {
     const texs = getBirdTextures();
     const tex = texs[bird.wingFrame];
@@ -34,8 +58,10 @@ export class Renderer {
 
     const w = 22;
     const h = 18;
+    // Visual Y = ground position minus height
+    const visualY = bird.y - bird.height;
     const sx = Math.round(bird.x - playerX + canvas.width / 2);
-    const sy = Math.round(bird.y - playerY + canvas.height / 2);
+    const sy = Math.round(visualY - playerY + canvas.height / 2);
 
     ctx.save();
     if (bird.facingLeft) {
@@ -135,6 +161,7 @@ export class Renderer {
       }
       birdsList.sort((a, b) => a.renderDepth - b.renderDepth);
       for (const bird of birdsList) {
+        this.#renderBirdShadow(bird, player.x, player.y);
         this.#renderBird(bird, player.x, player.y);
       }
     }

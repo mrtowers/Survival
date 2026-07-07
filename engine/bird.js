@@ -6,10 +6,13 @@ const PERCH_RADIUS = TILE_SIZE * 2;
 const FLEE_DISTANCE = TILE_SIZE * 3.5;
 const SPAWN_DISTANCE = TILE_SIZE * 12;
 const MAX_BIRDS = 6;
+const MIN_HEIGHT = TILE_SIZE * 0.5;
+const MAX_HEIGHT = TILE_SIZE * 3;
 
 class Bird {
   x;
-  y;
+  y;        // ground position (shadow falls here)
+  height;   // height above ground (visual Y = y - height)
   vx = 0;
   vy = 0;
   state = 'flying'; // 'flying' | 'landing' | 'perching' | 'fleeing'
@@ -19,13 +22,14 @@ class Bird {
   facingLeft = false;
   visible = true;
   name = 'bird';
-  /** Target position when landing */
+  /** Target ground position when landing */
   targetX = 0;
   targetY = 0;
+  targetHeight = 0;
   /** Tree the bird is landing on */
   targetTree = null;
 
-  /** Depth for Y-sorted rendering */
+  /** Depth for Y-sorted rendering (by ground position) */
   get renderDepth() {
     return this.y;
   }
@@ -33,6 +37,7 @@ class Bird {
   constructor(x, y) {
     this.x = x;
     this.y = y;
+    this.height = MIN_HEIGHT + Math.random() * (MAX_HEIGHT - MIN_HEIGHT);
     const angle = Math.random() * Math.PI * 2;
     this.vx = Math.cos(angle) * FLY_SPEED;
     this.vy = Math.sin(angle) * FLY_SPEED;
@@ -91,6 +96,12 @@ export class BirdManager {
         case 'fleeing':
           this.#updateFleeing(bird, dt, dx, dy, distToPlayer);
           break;
+      }
+
+      // Gentle height oscillation when flying / fleeing
+      if (bird.state === 'flying' || bird.state === 'fleeing') {
+        bird.height += Math.sin(Date.now() * 0.001 + bird.x * 0.01) * dt * 10;
+        bird.height = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, bird.height));
       }
 
       // Wing animation
@@ -174,8 +185,9 @@ export class BirdManager {
           bird.state = 'landing';
           bird.targetTree = tree;
           bird.targetX = tree.x + (Math.random() - 0.5) * TILE_SIZE * 0.4;
-          bird.targetY = tree.y - TILE_SIZE * 0.8 + (Math.random() - 0.5) * TILE_SIZE * 0.3;
-          bird.stateTimer = 1 + Math.random() * 1.5; // time to reach target
+          bird.targetY = tree.y;
+          bird.targetHeight = TILE_SIZE * 0.8; // crown height
+          bird.stateTimer = 1 + Math.random() * 1.5;
           return;
         }
       }
@@ -209,14 +221,20 @@ export class BirdManager {
 
     bird.stateTimer -= dt;
 
+    // Move toward ground target
     const tx = bird.targetX - bird.x;
     const ty = bird.targetY - bird.y;
     const dist = Math.sqrt(tx * tx + ty * ty);
 
-    if (dist < 5 || bird.stateTimer <= 0) {
+    // Descend toward target height
+    const heightDiff = bird.targetHeight - bird.height;
+    bird.height += heightDiff * dt * 2;
+
+    if ((dist < 5 && Math.abs(heightDiff) < 5) || bird.stateTimer <= 0) {
       // Arrived! Land and trigger effects
       bird.x = bird.targetX;
       bird.y = bird.targetY;
+      bird.height = bird.targetHeight;
       bird.vx = 0;
       bird.vy = 0;
       bird.state = 'perching';
@@ -230,10 +248,12 @@ export class BirdManager {
       return;
     }
 
-    // Fly toward target at a reduced speed with easing
-    const speed = Math.min(FLY_SPEED * 1.2, dist * 2);
-    bird.vx = (tx / dist) * speed;
-    bird.vy = (ty / dist) * speed;
+    // Fly toward target
+    if (dist > 1) {
+      const speed = Math.min(FLY_SPEED * 1.2, dist * 2);
+      bird.vx = (tx / dist) * speed;
+      bird.vy = (ty / dist) * speed;
+    }
     bird.x += bird.vx * dt;
     bird.y += bird.vy * dt;
 
@@ -251,10 +271,11 @@ export class BirdManager {
 
     bird.stateTimer -= dt;
     if (bird.stateTimer <= 0) {
-      // Take off again — launch upward
+      // Take off — launch upward (increase height)
       bird.state = 'flying';
       bird.stateTimer = 2 + Math.random() * 4;
-      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.5; // mostly upward
+      bird.height = bird.targetHeight + Math.random() * TILE_SIZE;
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.5;
       bird.vx = Math.cos(angle) * FLY_SPEED;
       bird.vy = Math.sin(angle) * FLY_SPEED;
     }
