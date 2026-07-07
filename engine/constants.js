@@ -3,6 +3,7 @@ export const MAP_RADIUS = 200;
 export const RENDER_DIST = 500;
 export const PLAYER_SPEED = 240;
 export const INTERACTION_RANGE = TILE_SIZE * 2.5; // how close player must be to interact
+export const DAY_LENGTH = 600; // real-time seconds for a full day/night cycle (10 min)
 
 export const TEXTURES = {
   TEST: 0,
@@ -26,4 +27,14 @@ export const TEXTURES = {
   CHAR_WALK2: 18,
   CHAR_WALK3: 19,
   CHAR_ATTACK: 20,
+  SAND: 21,
+  WATER: 22,
+  SNOW: 23,
+  CACTUS: 24,
+  DEAD_TREE: 25,
+  WORKBENCH: 26,
+  CAMPFIRE_TEX: 27,
+  WALL: 28,
+  PLACED_GHOST: 29,
+  CAMPFIRE_ALT: 30,
 };

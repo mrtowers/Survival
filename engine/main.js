@@ -7,8 +7,16 @@ import { Renderer } from './renderer.js';
 import { ParticleSystem } from './particles.js';
 import { Inventory } from './inventory.js';
 import { BirdManager } from './bird.js';
-import { getBushTexture, getMushroomTexture, getFlowerTexture, getTallGrassTexture, getStumpTexture, getSmallBushTexture } from './item-icons.js';
-import { TILE_SIZE, TEXTURES, INTERACTION_RANGE } from './constants.js';
+import { MobManager } from './mob.js';
+import { CraftingSystem } from './crafting.js';
+import { CraftingUI } from './crafting-ui.js';
+import { getBushTexture, getMushroomTexture, getFlowerTexture, getTallGrassTexture, getStumpTexture, getSmallBushTexture, getCactusTexture, getDeadTreeTexture, getWorkbenchTexture, getCampfireTexture, getCampfireAltTexture, getWallTexture } from './item-icons.js';
+import { BuildingSystem } from './building.js';
+import { TILE_SIZE, TEXTURES, INTERACTION_RANGE, DAY_LENGTH } from './constants.js';
+import { DayCycle } from './day-cycle.js';
+import { BiomeGenerator } from './biomes.js';
+import { HUD } from './hud.js';
+import { DeathScreen } from './death-screen.js';
 
 // --- Bootstrap ---
 
@@ -19,12 +27,20 @@ input.init();
 
 const assets = new AssetLoader();
 
-const map = new GameMap();
+const biomeGen = new BiomeGenerator();
+const map = new GameMap(biomeGen);
 const player = new Player();
 const renderer = new Renderer(assets);
 const particles = new ParticleSystem();
 const inventory = new Inventory();
+const craftingSystem = new CraftingSystem();
+const craftingUI = new CraftingUI(craftingSystem);
 const birds = new BirdManager();
+const mobs = new MobManager();
+const dayCycle = new DayCycle(DAY_LENGTH);
+const buildingSystem = new BuildingSystem();
+const hud = new HUD();
+const deathScreen = new DeathScreen();
 
 const assetManifest = [
   'test',           // 0
@@ -125,6 +141,22 @@ function onDestroyed(obj) {
       life: 0.5,
       size: 3,
     });
+  } else if (obj.name === 'cactus') {
+    map.dropItems(obj.x, obj.y + TILE_SIZE * 0.5, 'FIBER', 1, 3);
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 8, {
+      color: '#2D7A2D',
+      speed: 200,
+      life: 0.7,
+      size: 3,
+    });
+  } else if (obj.name === 'dead_tree') {
+    map.dropItems(obj.x, obj.y + TILE_SIZE * 0.5, 'WOOD', 1, 2);
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 8, {
+      color: '#6B5A4E',
+      speed: 200,
+      life: 0.7,
+      size: 3,
+    });
   }
 }
 
@@ -166,6 +198,14 @@ function onHit(obj) {
     particles.emit(obj.x - TILE_SIZE / 2, obj.y, 5, {
       color: '#4A7A3E', speed: 140, life: 0.5, size: 3,
     });
+  } else if (obj.name === 'cactus') {
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 5, {
+      color: '#2D7A2D', speed: 180, life: 0.5, size: 3,
+    });
+  } else if (obj.name === 'dead_tree') {
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 5, {
+      color: '#6B5A4E', speed: 180, life: 0.5, size: 3,
+    });
   }
 }
 
@@ -182,19 +222,75 @@ function tick(now) {
   const delta = Math.min((now - lastTime) / 1000, 0.05); // cap delta
   lastTime = now;
 
-  // ---- Toggle inventory ----
+  // ---- Toggle inventory & crafting ----
 
   if (input.consumeKey('e')) {
     inventory.toggle();
+  }
+
+  if (input.consumeKey('c')) {
+    craftingUI.toggle();
+  }
+
+  // ---- Number key selection & consumption (1-9) ----
+
+  for (let i = 0; i < 9; i++) {
+    const key = String(i + 1);
+    if (input.consumeKey(key)) {
+      inventory.selectSlot(i);
+      const slot = inventory.getHotbarSlot(i);
+      if (slot && slot.count > 0) {
+        const consumable = ['BERRY', 'MUSHROOM', 'RAW_MEAT', 'COOKED_MEAT'];
+        if (consumable.includes(slot.type)) {
+          const consumed = player.consume(slot.type);
+          if (consumed) {
+            slot.count--;
+            if (slot.count <= 0) {
+              inventory.setHotbarSlot(i, null);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ---- Scroll wheel for hotbar selection ----
+
+  const wheelDelta = input.consumeWheel();
+  if (wheelDelta !== 0) {
+    inventory.selectSlot(inventory.selectedSlot + wheelDelta);
+  }
+
+  // ---- Building: enter placement mode (b key) ----
+
+  if (input.consumeKey('b') && !player.isDead) {
+    if (buildingSystem.isPlacing) {
+      buildingSystem.exitPlacementMode();
+    } else {
+      // Check if the selected hotbar slot has a placeable item
+      for (let i = 0; i < 9; i++) {
+        const slot = inventory.getHotbarSlot(i);
+        if (slot && slot.count > 0 && buildingSystem.placeableItems.includes(slot.type)) {
+          buildingSystem.enterPlacementMode(slot.type);
+          break;
+        }
+      }
+    }
+  }
+
+  // ---- Respawn ----
+
+  if (input.consumeKey('r') && player.isDead) {
+    player.respawn();
   }
 
   // ---- Drag & drop (works even when inventory is open) ----
 
   inventory.handleDrag(input.justMouseDown, input.justMouseUp, input.mouseX, input.mouseY);
 
-  // ---- Pause game while inventory is open ----
+  // ---- Pause game while inventory or crafting is open (and player alive) ----
 
-  if (!inventory.isOpen) {
+  if (!inventory.isOpen && !craftingUI.isOpen && !player.isDead) {
     // ---- Hover detection (per-frame) ----
 
     // Clear previous hover flags
@@ -203,31 +299,121 @@ function tick(now) {
     }
 
     const mouseWorld = screenToWorld(input.mouseX, input.mouseY);
-    const hoveredObj = map.findAt(mouseWorld.x, mouseWorld.y);
-    if (hoveredObj) {
-      // Distance check: use bottom-center of the object (where player stands)
-      const dx = hoveredObj.x - player.x;
-      const dy = hoveredObj.y - player.y;
-      if (dx * dx + dy * dy <= INTERACTION_RANGE * INTERACTION_RANGE) {
-        hoveredObj.hovered = true;
+
+    // ---- Building placement mode ----
+
+    if (buildingSystem.isPlacing) {
+      buildingSystem.updatePreview(mouseWorld.x, mouseWorld.y);
+
+      // Right-click to cancel placement
+      if (input.consumeRightClick()) {
+        buildingSystem.exitPlacementMode();
       }
+
+      // Left-click to confirm placement (if valid)
+      if (input.consumeClick()) {
+        buildingSystem.confirmPlacement(inventory, map);
+      }
+    } else {
+      // Normal mode: hover detection
+      const hoveredObj = map.findAt(mouseWorld.x, mouseWorld.y);
+      if (hoveredObj) {
+        // Distance check: use bottom-center of the object (where player stands)
+        const dx = hoveredObj.x - player.x;
+        const dy = hoveredObj.y - player.y;
+        if (dx * dx + dy * dy <= INTERACTION_RANGE * INTERACTION_RANGE) {
+          hoveredObj.hovered = true;
+        }
+      }
+    }
+
+    // ---- Campfire warmth check ----
+
+    const campfires = map.getObjectsInRadius(player.x, player.y, 3);
+    let nearCampfire = false;
+    for (const cf of campfires) {
+      if (cf.name === 'campfire') {
+        const dx = cf.x - player.x;
+        const dy = cf.y - player.y;
+        if (Math.sqrt(dx * dx + dy * dy) <= TILE_SIZE * 2) {
+          nearCampfire = true;
+          break;
+        }
+      }
+    }
+    player.setNearCampfire(nearCampfire);
+
+    // ---- Sync equipped item ----
+
+    const selectedItem = inventory.getSelectedItem();
+    player.equippedItem = selectedItem;
+
+    // Handle armor from hotbar selection
+    if (selectedItem && selectedItem.type === 'FIBER_ARMOR') {
+      player.armor = 0.2;
+    } else {
+      player.armor = 0;
     }
 
     // ---- Input handling ----
 
-    player.update(input, delta);
+    // Determine current biome for thirst modifiers
+    const biome = map.getBiome ? map.getBiome(
+      Math.floor(player.x / TILE_SIZE),
+      Math.floor(player.y / TILE_SIZE),
+    ) : undefined;
+    player.update(input, delta, biome);
 
-    if (input.consumeClick()) {
+    if (!buildingSystem.isPlacing && input.consumeClick()) {
       const world = screenToWorld(input.mouseX, input.mouseY);
-      const obj = map.findAt(world.x, world.y);
-      if (obj) {
-        const dx = obj.x - player.x;
-        const dy = obj.y - player.y;
+      // Check mobs first
+      const clickedMob = mobs.findAt(world.x, world.y);
+      if (clickedMob) {
+        const dx = clickedMob.x - player.x;
+        const dy = clickedMob.y - player.y;
         if (dx * dx + dy * dy <= INTERACTION_RANGE * INTERACTION_RANGE) {
-          const alive = obj.hit(1, 5);
-          onHit(obj);
+          // Calculate damage based on equipped weapon
+          const damage = player.attack(clickedMob);
+          // Knockback direction (from player toward mob)
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const knockbackDir = { x: dx / dist, y: dy / dist };
+          const alive = mobs.damageMob(clickedMob, damage, map, knockbackDir);
+          particles.emit(clickedMob.x, clickedMob.y, 5, {
+            color: clickedMob.color,
+            speed: 150,
+            life: 0.4,
+            size: 3,
+          });
+          // Consume weapon durability
+          if (selectedItem && selectedItem.durability !== undefined) {
+            inventory.useSelectedDurability();
+          }
           if (!alive) {
-            onDestroyed(obj);
+            particles.emit(clickedMob.x, clickedMob.y, 10, {
+              color: clickedMob.color,
+              speed: 200,
+              life: 0.6,
+              size: 4,
+            });
+          }
+        }
+      } else {
+        const obj = map.findAt(world.x, world.y);
+        if (obj) {
+          const dx = obj.x - player.x;
+          const dy = obj.y - player.y;
+          if (dx * dx + dy * dy <= INTERACTION_RANGE * INTERACTION_RANGE) {
+            // Use toolLevel for bonus damage on resource gathering
+            const toolDamage = player.toolLevel;
+            const alive = obj.hit(toolDamage, 5);
+            onHit(obj);
+            // Consume tool durability on resource hits (only if tool provides bonus)
+            if (selectedItem && selectedItem.durability !== undefined && toolDamage > 1) {
+              inventory.useSelectedDurability();
+            }
+            if (!alive) {
+              onDestroyed(obj);
+            }
           }
         }
       }
@@ -249,9 +435,17 @@ function tick(now) {
 
     particles.update(delta);
 
+    // ---- Update day/night cycle ----
+
+    dayCycle.update(delta);
+
     // ---- Update birds ----
 
     birds.update(delta, player.x, player.y);
+
+    // ---- Update mobs ----
+
+    mobs.update(delta, player, map, !dayCycle.isDay, (amount) => player.takeDamage(amount));
 
     const renderDist = getResponsiveRenderDist();
     const visibleObjects = map.getVisibleObjects(
@@ -264,14 +458,30 @@ function tick(now) {
     // ---- Render ----
 
     lastVisibleObjects = visibleObjects;
-    renderer.render(visibleObjects, player, particles, map.getGroundItems(), birds.getBirds());
+    renderer.render(visibleObjects, player, particles, map.getGroundItems(), birds.getBirds(), mobs.getMobs(), dayCycle, buildingSystem, map);
   } else {
-    // Inventory is open — just re-render last frame with overlay
-    renderer.render(lastVisibleObjects, player, particles, map.getGroundItems(), birds.getBirds());
+    // Inventory or crafting is open — just re-render last frame with overlay
+    renderer.render(lastVisibleObjects, player, particles, map.getGroundItems(), birds.getBirds(), mobs.getMobs(), dayCycle, buildingSystem, map);
+
+    // Crafting UI click handling
+    if (input.consumeClick()) {
+      craftingUI.handleClick(input.mouseX, input.mouseY, inventory);
+    }
   }
 
   // Inventory UI (hotbar always, full inventory if open)
   inventory.render(ctx);
+
+  // Crafting UI (if open)
+  craftingUI.render(ctx, inventory);
+
+  // HUD (always visible)
+  hud.render(ctx, player);
+
+  // Death screen overlay
+  if (player.isDead) {
+    deathScreen.render(ctx);
+  }
 
   input.endFrame();
 
@@ -290,6 +500,12 @@ async function start() {
   assets.registerTexture(TEXTURES.TALL_GRASS, getTallGrassTexture());
   assets.registerTexture(TEXTURES.STUMP, getStumpTexture());
   assets.registerTexture(TEXTURES.BUSH_SMALL, getSmallBushTexture());
+  assets.registerTexture(TEXTURES.CACTUS, getCactusTexture());
+  assets.registerTexture(TEXTURES.DEAD_TREE, getDeadTreeTexture());
+  assets.registerTexture(TEXTURES.WORKBENCH, getWorkbenchTexture());
+  assets.registerTexture(TEXTURES.CAMPFIRE_TEX, getCampfireTexture());
+  assets.registerTexture(TEXTURES.CAMPFIRE_ALT, getCampfireAltTexture());
+  assets.registerTexture(TEXTURES.WALL, getWallTexture());
 
   map.generate();
   birds.setTrees(map.getTrees());

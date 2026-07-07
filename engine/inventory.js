@@ -11,15 +11,25 @@ const INV_SLOT = 50;
 const INV_GAP = 5;
 const PANEL_PAD = 12;
 
+/** Items that have durability (tools, weapons). */
+const DURABLE_ITEMS = {
+  STONE_AXE: 30,
+  STONE_PICKAXE: 30,
+  STONE_SWORD: 25,
+};
+
 export class Inventory {
-  /** @type {({ type: string, count: number } | null)[]} */
+  /** @type {({ type: string, count: number, durability?: number } | null)[]} */
   #hotbar = new Array(HOTBAR_SIZE).fill(null);
-  /** @type {({ type: string, count: number } | null)[]} */
+  /** @type {({ type: string, count: number, durability?: number } | null)[]} */
   #inventory = new Array(INV_SIZE).fill(null);
   /** @type {boolean} */
   #open = false;
 
-  /** @type {{ array: 'hotbar'|'inventory', index: number, type: string, count: number } | null} */
+  /** Currently selected hotbar slot (0-8). */
+  selectedSlot = 0;
+
+  /** @type {{ array: 'hotbar'|'inventory', index: number, type: string, count: number, durability?: number } | null} */
   #dragSrc = null;
   #dragMouseX = 0;
   #dragMouseY = 0;
@@ -53,6 +63,47 @@ export class Inventory {
     return total;
   }
 
+  /**
+   * Remove up to `count` items of the given type from the inventory.
+   * Removes from hotbar first, then inventory.
+   * @param {string} itemType
+   * @param {number} count
+   * @returns {number} actual number removed
+   */
+  remove(itemType, count) {
+    let remaining = count;
+    remaining = this.#removeFromArray(this.#hotbar, itemType, remaining);
+    remaining = this.#removeFromArray(this.#inventory, itemType, remaining);
+    return count - remaining;
+  }
+
+  /**
+   * Iterate over all slots (hotbar then inventory) with a callback.
+   * @param {(slot: ({ type: string, count: number } | null), index: number, array: 'hotbar'|'inventory') => void} fn
+   */
+  forEachSlot(fn) {
+    for (let i = 0; i < this.#hotbar.length; i++) {
+      fn(this.#hotbar[i], i, 'hotbar');
+    }
+    for (let i = 0; i < this.#inventory.length; i++) {
+      fn(this.#inventory[i], i, 'inventory');
+    }
+  }
+
+  /** Remove items from a single array, returning remaining. */
+  #removeFromArray(arr, itemType, remaining) {
+    for (let i = 0; i < arr.length && remaining > 0; i++) {
+      const slot = arr[i];
+      if (slot && slot.type === itemType) {
+        const take = Math.min(slot.count, remaining);
+        slot.count -= take;
+        remaining -= take;
+        if (slot.count <= 0) arr[i] = null;
+      }
+    }
+    return remaining;
+  }
+
   /** Toggle the full inventory screen. */
   toggle() {
     // Cancel any in-progress drag when closing
@@ -62,6 +113,70 @@ export class Inventory {
 
   get isOpen() {
     return this.#open;
+  }
+
+  /**
+   * Get the item in a hotbar slot.
+   * @param {number} index 0-8
+   * @returns {{ type: string, count: number } | null}
+   */
+  getHotbarSlot(index) {
+    if (index < 0 || index >= HOTBAR_SIZE) return null;
+    return this.#hotbar[index];
+  }
+
+  /**
+   * Set a hotbar slot.
+   * @param {number} index 0-8
+   * @param {{ type: string, count: number, durability?: number } | null} value
+   */
+  setHotbarSlot(index, value) {
+    if (index < 0 || index >= HOTBAR_SIZE) return;
+    this.#hotbar[index] = value;
+  }
+
+  /**
+   * Select a hotbar slot by index (0-8). Clamps to valid range.
+   * @param {number} index
+   */
+  selectSlot(index) {
+    if (index < 0) index = HOTBAR_SIZE - 1;
+    if (index >= HOTBAR_SIZE) index = 0;
+    this.selectedSlot = index;
+  }
+
+  /**
+   * Get the item in the currently selected hotbar slot.
+   * @returns {{ type: string, count: number, durability?: number } | null}
+   */
+  getSelectedItem() {
+    return this.#hotbar[this.selectedSlot] || null;
+  }
+
+  /**
+   * Get the durability of a slot item, or null if not a durable item.
+   * @param {{ type: string, count: number, durability?: number } | null} slot
+   * @returns {number|null}
+   */
+  getDurability(slot) {
+    if (!slot || slot.durability === undefined) return null;
+    return slot.durability;
+  }
+
+  /**
+   * Consume one durability use from the selected slot.
+   * If durability reaches 0, the item is removed from the slot.
+   * @returns {boolean} true if the item is still usable (not broken)
+   */
+  useSelectedDurability() {
+    const slot = this.#hotbar[this.selectedSlot];
+    if (!slot || slot.durability === undefined) return false;
+    slot.durability--;
+    if (slot.durability <= 0) {
+      this.#hotbar[this.selectedSlot] = null;
+      return false;
+    }
+    return true;
   }
 
   // ----- Drag & drop -----
@@ -86,7 +201,7 @@ export class Inventory {
       if (hit) {
         const slot = this.#getSlot(hit);
         if (slot) {
-          this.#dragSrc = { ...hit, type: slot.type, count: slot.count };
+          this.#dragSrc = { ...hit, type: slot.type, count: slot.count, durability: slot.durability };
           this.#setSlot(hit, null); // pick up
         }
       }
@@ -163,7 +278,12 @@ export class Inventory {
     for (let i = 0; i < arr.length && remaining > 0; i++) {
       if (arr[i] === null) {
         const add = Math.min(MAX_STACK, remaining);
-        arr[i] = { type: itemType, count: add };
+        const slot = { type: itemType, count: add };
+        // Initialize durability for tools
+        if (DURABLE_ITEMS[itemType] !== undefined) {
+          slot.durability = DURABLE_ITEMS[itemType];
+        }
+        arr[i] = slot;
         remaining -= add;
       }
     }
@@ -183,7 +303,7 @@ export class Inventory {
     if (this.#dragSrc.array === target.array && this.#dragSrc.index === target.index) {
       const existing = this.#getSlot(srcRef);
       if (existing === null) {
-        this.#setSlot(srcRef, { type: this.#dragSrc.type, count: this.#dragSrc.count });
+        this.#setSlot(srcRef, { type: this.#dragSrc.type, count: this.#dragSrc.count, durability: this.#dragSrc.durability });
       } else if (existing.type === this.#dragSrc.type) {
         existing.count += this.#dragSrc.count;
       } else {
@@ -195,18 +315,22 @@ export class Inventory {
 
     if (tgtSlot === null) {
       // Empty target — move
-      this.#setSlot(target, { type: this.#dragSrc.type, count: this.#dragSrc.count });
+      this.#setSlot(target, { type: this.#dragSrc.type, count: this.#dragSrc.count, durability: this.#dragSrc.durability });
     } else if (tgtSlot.type === this.#dragSrc.type) {
-      // Same type — merge
+      // Same type — merge (tools shouldn't merge since count=1, but handle anyway)
       const canAdd = MAX_STACK - tgtSlot.count;
       if (canAdd >= this.#dragSrc.count) {
         tgtSlot.count += this.#dragSrc.count;
+        // Preserve target durability on merge (newer tool's durability)
+        if (this.#dragSrc.durability !== undefined) {
+          tgtSlot.durability = this.#dragSrc.durability;
+        }
       } else {
         tgtSlot.count = MAX_STACK;
         const leftover = this.#dragSrc.count - canAdd;
         const existing = this.#getSlot(srcRef);
         if (existing === null) {
-          this.#setSlot(srcRef, { type: this.#dragSrc.type, count: leftover });
+          this.#setSlot(srcRef, { type: this.#dragSrc.type, count: leftover, durability: this.#dragSrc.durability });
         } else if (existing.type === this.#dragSrc.type) {
           existing.count += leftover;
         } else {
@@ -215,7 +339,7 @@ export class Inventory {
       }
     } else {
       // Different type — swap
-      this.#setSlot(target, { type: this.#dragSrc.type, count: this.#dragSrc.count });
+      this.#setSlot(target, { type: this.#dragSrc.type, count: this.#dragSrc.count, durability: this.#dragSrc.durability });
       this.#setSlot(srcRef, tgtSlot);
     }
     this.#dragSrc = null;
@@ -229,7 +353,7 @@ export class Inventory {
     const ref = { array: this.#dragSrc.array, index: this.#dragSrc.index };
     const existing = this.#getSlot(ref);
     if (existing === null) {
-      this.#setSlot(ref, { type: this.#dragSrc.type, count: this.#dragSrc.count });
+      this.#setSlot(ref, { type: this.#dragSrc.type, count: this.#dragSrc.count, durability: this.#dragSrc.durability });
     } else if (existing.type === this.#dragSrc.type) {
       existing.count += this.#dragSrc.count;
     } else {
@@ -328,6 +452,23 @@ export class Inventory {
     ctx.fill();
     ctx.stroke();
 
+    // Equipped item name above hotbar
+    const selectedSlot = this.#hotbar[this.selectedSlot];
+    if (selectedSlot) {
+      const itemDef = ITEMS[selectedSlot.type];
+      if (itemDef) {
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.lineWidth = 3;
+        ctx.font = 'bold 13px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        const labelY = y - bp - 4;
+        ctx.strokeText(itemDef.name, width / 2, labelY);
+        ctx.fillText(itemDef.name, width / 2, labelY);
+      }
+    }
+
     for (let i = 0; i < HOTBAR_SIZE; i++) {
       const sx = startX + i * (HOTBAR_SLOT + HOTBAR_GAP);
       this.#drawSlotBox(ctx, sx, y, HOTBAR_SLOT, 4);
@@ -337,7 +478,19 @@ export class Inventory {
         const isDragging = this.#dragSrc?.array === 'hotbar' && this.#dragSrc.index === i;
         if (!isDragging) {
           this.#drawSlotContent(ctx, sx, y, HOTBAR_SLOT, slot);
+          // Draw durability bar for tools
+          if (slot.durability !== undefined && DURABLE_ITEMS[slot.type] !== undefined) {
+            this.#drawDurabilityBar(ctx, sx, y, HOTBAR_SLOT, slot.durability, DURABLE_ITEMS[slot.type]);
+          }
         }
+      }
+
+      // Selected slot highlight (golden border)
+      if (i === this.selectedSlot) {
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 2.5;
+        roundRect(ctx, sx - 2, y - 2, HOTBAR_SLOT + 4, HOTBAR_SLOT + 4, 5);
+        ctx.stroke();
       }
     }
 
@@ -470,6 +623,30 @@ export class Inventory {
     ctx.textBaseline = 'bottom';
     ctx.strokeText(String(slot.count), x + sz - pad / 2, y + sz - pad / 2);
     ctx.fillText(String(slot.count), x + sz - pad / 2, y + sz - pad / 2);
+  }
+
+  /**
+   * Draw a durability bar below the item icon in a slot.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} x
+   * @param {number} y
+   * @param {number} sz - slot size
+   * @param {number} durability
+   * @param {number} maxDurability
+   */
+  #drawDurabilityBar(ctx, x, y, sz, durability, maxDurability) {
+    const barW = sz - 6;
+    const barH = 3;
+    const barX = x + 3;
+    const barY = y + sz - 6;
+    const ratio = Math.max(0, durability / maxDurability);
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(barX, barY, barW, barH);
+
+    const color = ratio > 0.5 ? '#4CAF50' : ratio > 0.25 ? '#FF9800' : '#F44336';
+    ctx.fillStyle = color;
+    ctx.fillRect(barX, barY, barW * ratio, barH);
   }
 }
 

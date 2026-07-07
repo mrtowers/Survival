@@ -5,6 +5,20 @@ export const ITEMS = {
   MUSHROOM: { name: 'Mushroom', color: '#A0522D' },
   FLOWER: { name: 'Flower', color: '#DD88CC' },
   FIBER: { name: 'Fiber', color: '#7CB342' },
+  RAW_MEAT: { name: 'Raw Meat', color: '#CC4466' },
+  COOKED_MEAT: { name: 'Cooked Meat', color: '#885533' },
+  STICK: { name: 'Stick', color: '#8B5E3C' },
+  PLANK: { name: 'Plank', color: '#C4A46C' },
+  ROTTEN_FLESH: { name: 'Rotten Flesh', color: '#5A5A3A' },
+  SLIME_BALL: { name: 'Slime Ball', color: '#5AB85A' },
+  STONE_SWORD: { name: 'Stone Sword', color: '#888888', maxDurability: 25, equipType: 'weapon' },
+  STONE_AXE: { name: 'Stone Axe', color: '#888888', maxDurability: 30, equipType: 'tool' },
+  STONE_PICKAXE: { name: 'Stone Pickaxe', color: '#888888', maxDurability: 30, equipType: 'tool' },
+  FIBER_ARMOR: { name: 'Fiber Armor', color: '#7CB342', equipType: 'armor' },
+  WOOD_WALL: { name: 'Wood Wall', color: '#8B5E3C' },
+  BANDAGE: { name: 'Bandage', color: '#F5F5DC' },
+  WORKBENCH: { name: 'Workbench', color: '#8B5E3C' },
+  CAMPFIRE: { name: 'Campfire', color: '#FF6633' },
 };
 
 const GRAVITY = 500;

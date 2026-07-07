@@ -3,9 +3,11 @@ export class InputManager {
   #justPressed = new Set();
   #mouse = { x: 0, y: 0 };
   #justClicked = false;
+  #justRightClicked = false;
   #mouseDown = false;
   #justMouseDown = false;
   #justMouseUp = false;
+  #wheelDelta = 0;
   #bound = {
     keydown: null,
     keyup: null,
@@ -13,6 +15,8 @@ export class InputManager {
     mousedown: null,
     mouseup: null,
     click: null,
+    contextmenu: null,
+    wheel: null,
   };
 
   init() {
@@ -39,6 +43,15 @@ export class InputManager {
     this.#bound.click = () => {
       this.#justClicked = true;
     };
+    this.#bound.contextmenu = (e) => {
+      e.preventDefault();
+      this.#mouse = { x: e.offsetX, y: e.offsetY };
+      this.#justRightClicked = true;
+    };
+    this.#bound.wheel = (e) => {
+      e.preventDefault();
+      this.#wheelDelta += Math.sign(e.deltaY);
+    };
 
     document.addEventListener('keydown', this.#bound.keydown);
     document.addEventListener('keyup', this.#bound.keyup);
@@ -46,6 +59,8 @@ export class InputManager {
     document.addEventListener('mousedown', this.#bound.mousedown);
     document.addEventListener('mouseup', this.#bound.mouseup);
     document.addEventListener('click', this.#bound.click);
+    document.addEventListener('contextmenu', this.#bound.contextmenu);
+    document.addEventListener('wheel', this.#bound.wheel, { passive: false });
   }
 
   destroy() {
@@ -55,12 +70,14 @@ export class InputManager {
     document.removeEventListener('mousedown', this.#bound.mousedown);
     document.removeEventListener('mouseup', this.#bound.mouseup);
     document.removeEventListener('click', this.#bound.click);
+    document.removeEventListener('wheel', this.#bound.wheel);
   }
 
   /** Call at end of each frame to clear single-press events. */
   endFrame() {
     this.#justPressed.clear();
     this.#justClicked = false;
+    this.#justRightClicked = false;
     this.#justMouseDown = false;
     this.#justMouseUp = false;
   }
@@ -83,6 +100,27 @@ export class InputManager {
     const c = this.#justClicked;
     this.#justClicked = false;
     return c;
+  }
+
+  /** Returns true once per right click, then clears. */
+  consumeRightClick() {
+    const c = this.#justRightClicked;
+    this.#justRightClicked = false;
+    return c;
+  }
+
+  get justRightClicked() {
+    return this.#justRightClicked;
+  }
+
+  /**
+   * Consume scroll wheel delta (negative = scroll up, positive = scroll down).
+   * @returns {number} accumulated wheel delta, reset to 0 each frame
+   */
+  consumeWheel() {
+    const delta = this.#wheelDelta;
+    this.#wheelDelta = 0;
+    return delta;
   }
 
   get mouseX() {

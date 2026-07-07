@@ -1,6 +1,7 @@
 import { TILE_SIZE, MAP_RADIUS, TEXTURES } from './constants.js';
 import { GameObject, Animation } from './game-object.js';
 import { GroundItem } from './items.js';
+import { BIOMES } from './biomes.js';
 
 export class GameMap {
   /** @type {Map<string, GameObject[]>} */
@@ -8,8 +9,40 @@ export class GameMap {
   #allCount = 0;
   /** @type {GroundItem[]} */
   #groundItems = [];
+  /** @type {import('./biomes.js').BiomeGenerator} */
+  #biomeGen;
+
+  /**
+   * @param {import('./biomes.js').BiomeGenerator} biomeGen
+   */
+  constructor(biomeGen) {
+    this.#biomeGen = biomeGen;
+  }
+
+  /**
+   * Get the biome at a tile coordinate.
+   * @param {number} tx - Tile X
+   * @param {number} ty - Tile Y
+   * @returns {string}
+   */
+  getBiome(tx, ty) {
+    return this.#biomeGen.getBiomeAt(tx, ty);
+  }
+
+  /**
+   * Get the biome at a world coordinate (used by player movement).
+   * @param {number} worldX
+   * @param {number} worldY
+   * @returns {string}
+   */
+  getBiomeAt(worldX, worldY) {
+    const tx = Math.floor(worldX / TILE_SIZE);
+    const ty = Math.floor(worldY / TILE_SIZE);
+    return this.#biomeGen.getBiomeAt(tx, ty);
+  }
 
   generate() {
+    this.#biomeGen.clearCache();
     this.#generateGround();
     this.#generateDecorations();
     console.log(`Generated ${this.#allCount} objects across ${this.#grid.size} tiles`);
@@ -31,15 +64,33 @@ export class GameMap {
   #generateGround() {
     for (let i = -MAP_RADIUS; i < MAP_RADIUS; i++) {
       for (let j = -MAP_RADIUS; j < MAP_RADIUS; j++) {
-        const grass = new GameObject({
+        const biome = this.#biomeGen.getBiomeAt(i, j);
+        let texture;
+        switch (biome) {
+          case BIOMES.DESERT:
+            texture = TEXTURES.SAND;
+            break;
+          case BIOMES.WATER:
+            texture = TEXTURES.WATER;
+            break;
+          case BIOMES.SNOW:
+            texture = TEXTURES.SNOW;
+            break;
+          case BIOMES.PLAINS:
+          case BIOMES.FOREST:
+          default:
+            texture = TEXTURES.GRASS;
+            break;
+        }
+        const ground = new GameObject({
           name: 'ground',
           x: i * TILE_SIZE,
           y: j * TILE_SIZE,
-          texture: TEXTURES.GRASS,
-          textureHover: TEXTURES.GRASS,
+          texture: texture,
+          textureHover: texture,
           rotation: (Math.PI / 2) * Math.floor(Math.random() * 4),
         });
-        this.#add(i, j, grass);
+        this.#add(i, j, ground);
       }
     }
   }
@@ -47,113 +98,312 @@ export class GameMap {
   #generateDecorations() {
     for (let i = -MAP_RADIUS; i < MAP_RADIUS; i++) {
       for (let j = -MAP_RADIUS; j < MAP_RADIUS; j++) {
+        const biome = this.#biomeGen.getBiomeAt(i, j);
         const roll = Math.random() * 100;
 
-        if (roll < 10) {
-          const tree = new GameObject({
-            name: 'tree',
-            x: i * TILE_SIZE,
-            y: j * TILE_SIZE,
-            z: 3,
-            texture: TEXTURES.TREE,
-            collision: true,
-            shading: true,
-            sizeY: 3,
-            hpMax: 3,
-          });
-
-          const anim = new Animation('leaves', [
-            TEXTURES.TREE,
-            TEXTURES.TREE_ALT,
-          ], 0.05);
-          anim.play();
-          tree.animation = anim;
-          tree.onRender = () => {
-            anim.tick();
-            tree.texture = anim.texture;
-          };
-
-          this.#add(i, j, tree);
-        } else if (roll < 12) {
-          const rock = new GameObject({
-            name: 'rock',
-            x: i * TILE_SIZE,
-            y: j * TILE_SIZE,
-            z: 1,
-            texture: TEXTURES.STONE,
-            textureHover: TEXTURES.STONE_HOVER,
-            collision: true,
-            hpMax: 3,
-          });
-          this.#add(i, j, rock);
-        } else if (roll < 18) {
-          const bush = new GameObject({
-            name: 'bush',
-            x: i * TILE_SIZE,
-            y: j * TILE_SIZE,
-            z: 1,
-            texture: TEXTURES.BUSH,
-            collision: false,
-            hpMax: 2,
-          });
-          this.#add(i, j, bush);
-        } else if (roll < 20) {
-          const mushroom = new GameObject({
-            name: 'mushroom',
-            x: i * TILE_SIZE,
-            y: j * TILE_SIZE,
-            z: 1,
-            texture: TEXTURES.MUSHROOM,
-            collision: false,
-            hpMax: 1,
-          });
-          this.#add(i, j, mushroom);
-        } else if (roll < 22) {
-          const flower = new GameObject({
-            name: 'flower',
-            x: i * TILE_SIZE,
-            y: j * TILE_SIZE,
-            z: 1,
-            texture: TEXTURES.FLOWER,
-            collision: false,
-            hpMax: 1,
-          });
-          this.#add(i, j, flower);
-        } else if (roll < 30) {
-          const tallGrass = new GameObject({
-            name: 'tall_grass',
-            x: i * TILE_SIZE,
-            y: j * TILE_SIZE,
-            z: 1,
-            texture: TEXTURES.TALL_GRASS,
-            collision: false,
-            hpMax: 1,
-          });
-          this.#add(i, j, tallGrass);
-        } else if (roll < 32) {
-          const stump = new GameObject({
-            name: 'stump',
-            x: i * TILE_SIZE,
-            y: j * TILE_SIZE,
-            z: 1,
-            texture: TEXTURES.STUMP,
-            collision: true,
-            hpMax: 2,
-          });
-          this.#add(i, j, stump);
-        } else if (roll < 37) {
-          const smallBush = new GameObject({
-            name: 'bush_small',
-            x: i * TILE_SIZE,
-            y: j * TILE_SIZE,
-            z: 1,
-            texture: TEXTURES.BUSH_SMALL,
-            collision: false,
-            hpMax: 1,
-          });
-          this.#add(i, j, smallBush);
+        switch (biome) {
+          case BIOMES.FOREST:
+            this.#decorateForest(i, j, roll);
+            break;
+          case BIOMES.DESERT:
+            this.#decorateDesert(i, j, roll);
+            break;
+          case BIOMES.PLAINS:
+            this.#decoratePlains(i, j, roll);
+            break;
+          case BIOMES.SNOW:
+            this.#decorateSnow(i, j, roll);
+            break;
+          // WATER: no decorations
         }
       }
+    }
+  }
+
+  /** Forest: dense vegetation, trees, mushrooms, flowers */
+  #decorateForest(tx, ty, roll) {
+    if (roll < 14) {
+      const tree = new GameObject({
+        name: 'tree',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 3,
+        texture: TEXTURES.TREE,
+        collision: true,
+        shading: true,
+        sizeY: 3,
+        hpMax: 3,
+      });
+
+      const anim = new Animation('leaves', [
+        TEXTURES.TREE,
+        TEXTURES.TREE_ALT,
+      ], 0.05);
+      anim.play();
+      tree.animation = anim;
+      tree.onRender = () => {
+        anim.tick();
+        tree.texture = anim.texture;
+      };
+
+      this.#add(tx, ty, tree);
+    } else if (roll < 16) {
+      const rock = new GameObject({
+        name: 'rock',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.STONE,
+        textureHover: TEXTURES.STONE_HOVER,
+        collision: true,
+        hpMax: 3,
+      });
+      this.#add(tx, ty, rock);
+    } else if (roll < 22) {
+      const bush = new GameObject({
+        name: 'bush',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.BUSH,
+        collision: false,
+        hpMax: 2,
+      });
+      this.#add(tx, ty, bush);
+    } else if (roll < 26) {
+      const mushroom = new GameObject({
+        name: 'mushroom',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.MUSHROOM,
+        collision: false,
+        hpMax: 1,
+      });
+      this.#add(tx, ty, mushroom);
+    } else if (roll < 30) {
+      const flower = new GameObject({
+        name: 'flower',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.FLOWER,
+        collision: false,
+        hpMax: 1,
+      });
+      this.#add(tx, ty, flower);
+    } else if (roll < 38) {
+      const tallGrass = new GameObject({
+        name: 'tall_grass',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.TALL_GRASS,
+        collision: false,
+        hpMax: 1,
+      });
+      this.#add(tx, ty, tallGrass);
+    } else if (roll < 40) {
+      const stump = new GameObject({
+        name: 'stump',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.STUMP,
+        collision: true,
+        hpMax: 2,
+      });
+      this.#add(tx, ty, stump);
+    } else if (roll < 43) {
+      const smallBush = new GameObject({
+        name: 'bush_small',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.BUSH_SMALL,
+        collision: false,
+        hpMax: 1,
+      });
+      this.#add(tx, ty, smallBush);
+    }
+  }
+
+  /** Desert: cacti instead of trees, rocks, sparse bushes, no mushrooms/flowers */
+  #decorateDesert(tx, ty, roll) {
+    if (roll < 8) {
+      const cactus = new GameObject({
+        name: 'cactus',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 3,
+        texture: TEXTURES.CACTUS,
+        collision: true,
+        shading: true,
+        sizeY: 2,
+        hpMax: 3,
+      });
+      this.#add(tx, ty, cactus);
+    } else if (roll < 12) {
+      const rock = new GameObject({
+        name: 'rock',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.STONE,
+        textureHover: TEXTURES.STONE_HOVER,
+        collision: true,
+        hpMax: 3,
+      });
+      this.#add(tx, ty, rock);
+    } else if (roll < 17) {
+      const smallBush = new GameObject({
+        name: 'bush_small',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.BUSH_SMALL,
+        collision: false,
+        hpMax: 1,
+      });
+      this.#add(tx, ty, smallBush);
+    } else if (roll < 22) {
+      const tallGrass = new GameObject({
+        name: 'tall_grass',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.TALL_GRASS,
+        collision: false,
+        hpMax: 1,
+      });
+      this.#add(tx, ty, tallGrass);
+    }
+  }
+
+  /** Plains: fewer trees, more tall grass and flowers */
+  #decoratePlains(tx, ty, roll) {
+    if (roll < 5) {
+      const tree = new GameObject({
+        name: 'tree',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 3,
+        texture: TEXTURES.TREE,
+        collision: true,
+        shading: true,
+        sizeY: 3,
+        hpMax: 3,
+      });
+
+      const anim = new Animation('leaves', [
+        TEXTURES.TREE,
+        TEXTURES.TREE_ALT,
+      ], 0.05);
+      anim.play();
+      tree.animation = anim;
+      tree.onRender = () => {
+        anim.tick();
+        tree.texture = anim.texture;
+      };
+
+      this.#add(tx, ty, tree);
+    } else if (roll < 7) {
+      const rock = new GameObject({
+        name: 'rock',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.STONE,
+        textureHover: TEXTURES.STONE_HOVER,
+        collision: true,
+        hpMax: 3,
+      });
+      this.#add(tx, ty, rock);
+    } else if (roll < 10) {
+      const bush = new GameObject({
+        name: 'bush',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.BUSH,
+        collision: false,
+        hpMax: 2,
+      });
+      this.#add(tx, ty, bush);
+    } else if (roll < 14) {
+      const flower = new GameObject({
+        name: 'flower',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.FLOWER,
+        collision: false,
+        hpMax: 1,
+      });
+      this.#add(tx, ty, flower);
+    } else if (roll < 26) {
+      const tallGrass = new GameObject({
+        name: 'tall_grass',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.TALL_GRASS,
+        collision: false,
+        hpMax: 1,
+      });
+      this.#add(tx, ty, tallGrass);
+    } else if (roll < 29) {
+      const smallBush = new GameObject({
+        name: 'bush_small',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.BUSH_SMALL,
+        collision: false,
+        hpMax: 1,
+      });
+      this.#add(tx, ty, smallBush);
+    } else if (roll < 31) {
+      const mushroom = new GameObject({
+        name: 'mushroom',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.MUSHROOM,
+        collision: false,
+        hpMax: 1,
+      });
+      this.#add(tx, ty, mushroom);
+    }
+  }
+
+  /** Snow: dead trees, sparse rocks, no vegetation */
+  #decorateSnow(tx, ty, roll) {
+    if (roll < 6) {
+      const deadTree = new GameObject({
+        name: 'dead_tree',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 3,
+        texture: TEXTURES.DEAD_TREE,
+        collision: true,
+        shading: true,
+        sizeY: 3,
+        hpMax: 3,
+      });
+      this.#add(tx, ty, deadTree);
+    } else if (roll < 10) {
+      const rock = new GameObject({
+        name: 'rock',
+        x: tx * TILE_SIZE,
+        y: ty * TILE_SIZE,
+        z: 1,
+        texture: TEXTURES.STONE,
+        textureHover: TEXTURES.STONE_HOVER,
+        collision: true,
+        hpMax: 3,
+      });
+      this.#add(tx, ty, rock);
     }
   }
 
@@ -192,7 +442,7 @@ export class GameMap {
    * @returns {GameObject|null}
    */
   findAt(worldX, worldY) {
-    const interactable = ['tree', 'rock', 'bush', 'mushroom', 'flower', 'tall_grass', 'stump', 'bush_small'];
+    const interactable = ['tree', 'rock', 'bush', 'mushroom', 'flower', 'tall_grass', 'stump', 'bush_small', 'cactus', 'dead_tree'];
     /** @type {GameObject|null} */
     let best = null;
     let bestZ = -Infinity;
@@ -248,6 +498,90 @@ export class GameMap {
       }
     }
     return null;
+  }
+
+  /**
+   * Check if a world position is blocked by a collision object.
+   * @param {number} worldX
+   * @param {number} worldY
+   * @returns {boolean}
+   */
+  isBlocked(worldX, worldY) {
+    const tx = Math.round(worldX / TILE_SIZE);
+    const ty = Math.round(worldY / TILE_SIZE);
+    // Check a 3x3 area around the tile for collision objects
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const cell = this.#grid.get(this.#gridKey(tx + dx, ty + dy));
+        if (!cell) continue;
+        for (const obj of cell) {
+          if (!obj.visible || !obj.collision) continue;
+          // AABB check against the object's bounds
+          const left = obj.x - obj.sizeX * TILE_SIZE;
+          const right = obj.x;
+          const top = obj.y - obj.sizeY * TILE_SIZE;
+          const bottom = obj.y;
+          if (worldX >= left && worldX <= right && worldY >= top && worldY <= bottom) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Add a player-placed object to the grid.
+   * @param {string} name
+   * @param {number} x - World X
+   * @param {number} y - World Y
+   * @param {number} texture - Texture index
+   * @param {boolean} collision
+   * @param {number} hpMax
+   * @param {number} [z] - Z-order
+   * @param {boolean} [shading]
+   * @returns {GameObject}
+   */
+  addPlacedObject(name, x, y, texture, collision, hpMax, z = 1, shading = false) {
+    const obj = new GameObject({
+      name,
+      x,
+      y,
+      z,
+      texture,
+      textureHover: texture,
+      collision,
+      hpMax,
+      shading,
+    });
+    const tx = Math.floor(x / TILE_SIZE);
+    const ty = Math.floor(y / TILE_SIZE);
+    this.#add(tx, ty, obj);
+    return obj;
+  }
+
+  /**
+   * Get all game objects within a radius (in tiles) of a position.
+   * @param {number} x - World X
+   * @param {number} y - World Y
+   * @param {number} radius - Radius in tiles
+   * @returns {GameObject[]}
+   */
+  getObjectsInRadius(x, y, radius) {
+    const tx = Math.floor(x / TILE_SIZE);
+    const ty = Math.floor(y / TILE_SIZE);
+    const result = [];
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        const cell = this.#grid.get(this.#gridKey(tx + dx, ty + dy));
+        if (cell) {
+          for (const obj of cell) {
+            if (obj.visible) result.push(obj);
+          }
+        }
+      }
+    }
+    return result;
   }
 
   /**
