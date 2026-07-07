@@ -6,6 +6,7 @@ import { GameMap } from './map.js';
 import { Renderer } from './renderer.js';
 import { ParticleSystem } from './particles.js';
 import { Inventory } from './inventory.js';
+import { BirdManager } from './bird.js';
 import { TILE_SIZE } from './constants.js';
 
 // --- Bootstrap ---
@@ -22,6 +23,7 @@ const player = new Player();
 const renderer = new Renderer(assets);
 const particles = new ParticleSystem();
 const inventory = new Inventory();
+const birds = new BirdManager();
 
 const assetManifest = [
   'test',           // 0
@@ -151,6 +153,10 @@ function tick(now) {
 
     particles.update(delta);
 
+    // ---- Update birds ----
+
+    birds.update(delta, player.x, player.y);
+
     const renderDist = getResponsiveRenderDist();
     const visibleObjects = map.getVisibleObjects(
       player.x, player.y, renderDist,
@@ -162,10 +168,10 @@ function tick(now) {
     // ---- Render ----
 
     lastVisibleObjects = visibleObjects;
-    renderer.render(visibleObjects, player, particles, map.getGroundItems());
+    renderer.render(visibleObjects, player, particles, map.getGroundItems(), birds.getBirds());
   } else {
     // Inventory is open — just re-render last frame with overlay
-    renderer.render(lastVisibleObjects, player, particles, map.getGroundItems());
+    renderer.render(lastVisibleObjects, player, particles, map.getGroundItems(), birds.getBirds());
   }
 
   // Inventory UI (hotbar always, full inventory if open)
@@ -181,6 +187,7 @@ function tick(now) {
 async function start() {
   await assets.loadAll(assetManifest);
   map.generate();
+  birds.setTrees(map.getTrees());
   running = true;
   lastTime = performance.now();
   requestAnimationFrame(tick);

@@ -170,6 +170,20 @@ export class GameMap {
   }
 
   /**
+   * Get all tree objects.
+   * @returns {GameObject[]}
+   */
+  getTrees() {
+    const trees = [];
+    for (const [, cell] of this.#grid) {
+      for (const obj of cell) {
+        if (obj.name === 'tree') trees.push(obj);
+      }
+    }
+    return trees;
+  }
+
+  /**
    * Drop items on the ground.
    * @param {number} x - World X
    * @param {number} y - World Y

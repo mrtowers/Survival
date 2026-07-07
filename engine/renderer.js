@@ -1,6 +1,6 @@
 import { TILE_SIZE } from './constants.js';
 import { canvas, ctx } from './canvas.js';
-import { getItemIcon } from './item-icons.js';
+import { getItemIcon, getBirdTextures } from './item-icons.js';
 
 export class Renderer {
   /** @type {import('./asset-loader.js').AssetLoader} */
@@ -23,14 +23,42 @@ export class Renderer {
   }
 
   /**
+   * @param {import('./bird.js').Bird} bird
+   * @param {number} playerX
+   * @param {number} playerY
+   */
+  #renderBird(bird, playerX, playerY) {
+    const texs = getBirdTextures();
+    const tex = texs[bird.wingFrame];
+    if (!tex) return;
+
+    const w = 22;
+    const h = 18;
+    const sx = Math.round(bird.x - playerX + canvas.width / 2);
+    const sy = Math.round(bird.y - playerY + canvas.height / 2);
+
+    ctx.save();
+    if (bird.facingLeft) {
+      // Flip horizontally
+      ctx.translate(sx + w / 2, sy + h / 2);
+      ctx.scale(-1, 1);
+      ctx.drawImage(tex, -w / 2, -h / 2, w, h);
+    } else {
+      ctx.drawImage(tex, sx - w / 2, sy - h / 2, w, h);
+    }
+    ctx.restore();
+  }
+
+  /**
    * Render the game world with Y-sorting for correct depth.
    * Objects lower on screen (higher Y) render on top.
    * @param {import('./game-object.js').GameObject[]} objects
    * @param {import('./player.js').Player} player
    * @param {import('./particles.js').ParticleSystem} particles
    * @param {import('./items.js').GroundItem[]} [groundItems]
+   * @param {import('./bird.js').Bird[]} [birds]
    */
-  render(objects, player, particles, groundItems) {
+  render(objects, player, particles, groundItems, birds) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
 
@@ -44,6 +72,14 @@ export class Renderer {
       renderList.push({ obj, depth });
     }
 
+    // Birds with Y-depth sorting
+    if (birds) {
+      for (const bird of birds) {
+        if (!bird.visible) continue;
+        renderList.push({ bird, depth: bird.renderDepth });
+      }
+    }
+
     // Player depth = bottom of player sprite (feet position)
     const playerDepth = player.y + TILE_SIZE / 2;
     renderList.push({ depth: playerDepth });
@@ -52,41 +88,44 @@ export class Renderer {
     renderList.sort((a, b) => a.depth - b.depth);
 
     for (const entry of renderList) {
-      if (entry.obj === undefined) {
+      if (entry.obj) {
+        // Render game object
+        const obj = entry.obj;
+
+        if (obj.onRender) {
+          obj.onRender();
+        }
+
+        let screenX = Math.round((obj.x - obj.sizeX * TILE_SIZE) + (canvas.width / 2) - player.x);
+        let screenY = Math.round((obj.y - obj.sizeY * TILE_SIZE) + (canvas.height / 2) - player.y);
+
+        // Apply shake offset
+        if (obj.shake) {
+          screenX += Math.round(obj.shake.offsetX);
+          screenY += Math.round(obj.shake.offsetY);
+        }
+
+        const width = Math.round(TILE_SIZE * obj.sizeX);
+        const height = Math.round(TILE_SIZE * obj.sizeY);
+
+        const img = this.#assets.getByIndex(obj.texture);
+        if (img) {
+          if (obj.rotation) {
+            ctx.save();
+            ctx.translate(screenX + width / 2, screenY + height / 2);
+            ctx.rotate(obj.rotation);
+            ctx.drawImage(img, -width / 2, -height / 2, width, height);
+            ctx.restore();
+          } else {
+            ctx.drawImage(img, screenX, screenY, width, height);
+          }
+        }
+      } else if (entry.bird) {
+        // Render bird
+        this.#renderBird(entry.bird, player.x, player.y);
+      } else {
         // Render player
         this.#renderPlayer(player);
-        continue;
-      }
-
-      const obj = entry.obj;
-
-      if (obj.onRender) {
-        obj.onRender();
-      }
-
-      let screenX = Math.round((obj.x - obj.sizeX * TILE_SIZE) + (canvas.width / 2) - player.x);
-      let screenY = Math.round((obj.y - obj.sizeY * TILE_SIZE) + (canvas.height / 2) - player.y);
-
-      // Apply shake offset
-      if (obj.shake) {
-        screenX += Math.round(obj.shake.offsetX);
-        screenY += Math.round(obj.shake.offsetY);
-      }
-
-      const width = Math.round(TILE_SIZE * obj.sizeX);
-      const height = Math.round(TILE_SIZE * obj.sizeY);
-
-      const img = this.#assets.getByIndex(obj.texture);
-      if (img) {
-        if (obj.rotation) {
-          ctx.save();
-          ctx.translate(screenX + width / 2, screenY + height / 2);
-          ctx.rotate(obj.rotation);
-          ctx.drawImage(img, -width / 2, -height / 2, width, height);
-          ctx.restore();
-        } else {
-          ctx.drawImage(img, screenX, screenY, width, height);
-        }
       }
     }
 

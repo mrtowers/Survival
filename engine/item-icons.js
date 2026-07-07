@@ -135,6 +135,84 @@ function drawStone(d) {
   }
 }
 
+// ---- Bird ----
+
+const BIRD_W = 16;
+const BIRD_H = 12;
+
+/**
+ * Generate a 2-frame bird texture (wings up / wings down).
+ * @returns {[HTMLCanvasElement, HTMLCanvasElement]}
+ */
+export function getBirdTextures() {
+  if (getBirdTextures._cache) return getBirdTextures._cache;
+
+  const f1 = createBirdFrame(false);
+  const f2 = createBirdFrame(true);
+  getBirdTextures._cache = [f1, f2];
+  return [f1, f2];
+}
+
+/**
+ * Draw a simple side-view bird on a canvas using canvas paths.
+ * @param {boolean} wingsDown
+ */
+function createBirdFrame(wingsDown) {
+  const c = document.createElement('canvas');
+  c.width = BIRD_W;
+  c.height = BIRD_H;
+  const ctx = c.getContext('2d');
+
+  // Body (ellipse)
+  ctx.fillStyle = '#3C3732';
+  ctx.beginPath();
+  ctx.ellipse(8, 6, 5, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Tail
+  ctx.fillStyle = '#2A2622';
+  ctx.beginPath();
+  ctx.moveTo(3, 3);
+  ctx.lineTo(0, 2);
+  ctx.lineTo(1, 6);
+  ctx.lineTo(3, 7);
+  ctx.closePath();
+  ctx.fill();
+
+  // Wing
+  ctx.fillStyle = '#2A2622';
+  if (wingsDown) {
+    ctx.beginPath();
+    ctx.ellipse(8, 7.5, 3.5, 2.5, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.ellipse(8, 4, 3.5, 2, -0.15, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Belly highlight
+  ctx.fillStyle = '#5A5248';
+  ctx.beginPath();
+  ctx.ellipse(9, 8, 2.5, 1.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Beak
+  ctx.fillStyle = '#C8A032';
+  ctx.beginPath();
+  ctx.moveTo(12, 4);
+  ctx.lineTo(15, 4);
+  ctx.lineTo(12, 5.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(11, 3, 2, 2);
+
+  return c;
+}
+
 /** Parse a hex color to [r, g, b]. */
 function hexToRgba(hex) {
   const h = parseInt(hex.slice(1), 16);
