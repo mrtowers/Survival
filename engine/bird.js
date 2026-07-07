@@ -179,14 +179,10 @@ export class BirdManager {
 
     bird.x += bird.vx * dt;
     bird.y += bird.vy * dt;
-    bird.facingLeft = bird.vx < 0;
+    if (Math.abs(bird.vx) > Math.abs(bird.vy)) {
+      bird.facingLeft = bird.vx < 0;
+    }
   }
-
-  /**
-   * @param {Bird} bird
-   * @param {number} dt
-   * @param {number} distToPlayer
-   */
   #updatePerching(bird, dt, distToPlayer) {
     // Flee if player is close
     if (distToPlayer < FLEE_DISTANCE) {
@@ -226,9 +222,9 @@ export class BirdManager {
 
     bird.x += bird.vx * dt;
     bird.y += bird.vy * dt;
-    bird.facingLeft = bird.vx < 0;
-
-    // Calm down when far enough and timer expired
+    if (Math.abs(bird.vx) > Math.abs(bird.vy)) {
+      bird.facingLeft = bird.vx < 0;
+    }
     if (bird.stateTimer <= 0 && distToPlayer > FLEE_DISTANCE * 1.5) {
       bird.state = 'flying';
       bird.stateTimer = 2 + Math.random() * 4;
