@@ -86,6 +86,39 @@ export class GameMap {
             hpMax: 3,
           });
           this.#add(i, j, rock);
+        } else if (roll < 16) {
+          const bush = new GameObject({
+            name: 'bush',
+            x: i * TILE_SIZE,
+            y: j * TILE_SIZE,
+            z: 1,
+            texture: TEXTURES.BUSH,
+            collision: false,
+            hpMax: 2,
+          });
+          this.#add(i, j, bush);
+        } else if (roll < 18) {
+          const mushroom = new GameObject({
+            name: 'mushroom',
+            x: i * TILE_SIZE,
+            y: j * TILE_SIZE,
+            z: 1,
+            texture: TEXTURES.MUSHROOM,
+            collision: false,
+            hpMax: 1,
+          });
+          this.#add(i, j, mushroom);
+        } else if (roll < 20) {
+          const flower = new GameObject({
+            name: 'flower',
+            x: i * TILE_SIZE,
+            y: j * TILE_SIZE,
+            z: 1,
+            texture: TEXTURES.FLOWER,
+            collision: false,
+            hpMax: 1,
+          });
+          this.#add(i, j, flower);
         }
       }
     }
@@ -119,15 +152,19 @@ export class GameMap {
   }
 
   /**
-   * Find a tree near the given world position.
+   * Find any interactable object near the given world position.
+   * @param {number} worldX
+   * @param {number} worldY
    * @returns {GameObject|null}
    */
-  findTreeAt(worldX, worldY) {
+  findAt(worldX, worldY) {
     for (const [, cell] of this.#grid) {
       for (const obj of cell) {
-        if (obj.name !== 'tree' || !obj.visible) continue;
+        if (!obj.visible) continue;
+        const interactable = ['tree', 'rock', 'bush', 'mushroom', 'flower'];
+        if (!interactable.includes(obj.name)) continue;
         const dx = worldX - obj.x;
-        const dy = worldY - (obj.y - TILE_SIZE * 0.5); // aim at trunk area
+        const dy = worldY - (obj.name === 'tree' ? obj.y - TILE_SIZE * 0.5 : obj.y);
         if (dx * dx + dy * dy < TILE_SIZE * TILE_SIZE) {
           return obj;
         }
@@ -136,10 +173,22 @@ export class GameMap {
     return null;
   }
 
-  /**
-   * Find a rock near the given world position.
-   * @returns {GameObject|null}
-   */
+  /** Keep for backward compatibility. */
+  findTreeAt(worldX, worldY) {
+    for (const [, cell] of this.#grid) {
+      for (const obj of cell) {
+        if (obj.name !== 'tree' || !obj.visible) continue;
+        const dx = worldX - obj.x;
+        const dy = worldY - (obj.y - TILE_SIZE * 0.5);
+        if (dx * dx + dy * dy < TILE_SIZE * TILE_SIZE) {
+          return obj;
+        }
+      }
+    }
+    return null;
+  }
+
+  /** Keep for backward compatibility. */
   findRockAt(worldX, worldY) {
     for (const [, cell] of this.#grid) {
       for (const obj of cell) {

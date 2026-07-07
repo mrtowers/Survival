@@ -14,4 +14,7 @@ export const TEXTURES = {
   STONE: 7,
   STONE_HOVER: 8,
   TREE_ALT: 9,
+  BUSH: 10,
+  MUSHROOM: 11,
+  FLOWER: 12,
 };

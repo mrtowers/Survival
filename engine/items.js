@@ -1,6 +1,10 @@
 export const ITEMS = {
   WOOD: { name: 'Wood', color: '#8B5E3C' },
   STONE: { name: 'Stone', color: '#808080' },
+  BERRY: { name: 'Berry', color: '#CC3333' },
+  MUSHROOM: { name: 'Mushroom', color: '#A0522D' },
+  FLOWER: { name: 'Flower', color: '#DD88CC' },
+  FIBER: { name: 'Fiber', color: '#7CB342' },
 };
 
 const GRAVITY = 500;

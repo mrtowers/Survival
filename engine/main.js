@@ -7,7 +7,8 @@ import { Renderer } from './renderer.js';
 import { ParticleSystem } from './particles.js';
 import { Inventory } from './inventory.js';
 import { BirdManager } from './bird.js';
-import { TILE_SIZE } from './constants.js';
+import { getBushTexture, getMushroomTexture, getFlowerTexture } from './item-icons.js';
+import { TILE_SIZE, TEXTURES } from './constants.js';
 
 // --- Bootstrap ---
 
@@ -75,6 +76,31 @@ function onDestroyed(obj) {
       life: 0.7,
       size: 3,
     });
+  } else if (obj.name === 'bush') {
+    map.dropItems(obj.x, obj.y + TILE_SIZE * 0.5, 'BERRY', 1, 4);
+    map.dropItems(obj.x, obj.y + TILE_SIZE * 0.5, 'FIBER', 1, 2);
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 10, {
+      color: '#3D7A33',
+      speed: 180,
+      life: 0.6,
+      size: 3,
+    });
+  } else if (obj.name === 'mushroom') {
+    map.dropItems(obj.x, obj.y + TILE_SIZE * 0.5, 'MUSHROOM', 1, 2);
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 6, {
+      color: '#A0522D',
+      speed: 150,
+      life: 0.5,
+      size: 2,
+    });
+  } else if (obj.name === 'flower') {
+    map.dropItems(obj.x, obj.y + TILE_SIZE * 0.5, 'FLOWER', 1, 2);
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 8, {
+      color: '#DD88CC',
+      speed: 150,
+      life: 0.5,
+      size: 2,
+    });
   }
 }
 
@@ -91,6 +117,18 @@ function onHit(obj) {
   } else if (obj.name === 'rock') {
     particles.emit(obj.x - TILE_SIZE / 2, obj.y, 6, {
       color: '#B0B0B0', speed: 180, life: 0.5, size: 3,
+    });
+  } else if (obj.name === 'bush') {
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 6, {
+      color: '#3D7A33', speed: 160, life: 0.5, size: 3,
+    });
+  } else if (obj.name === 'mushroom') {
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 3, {
+      color: '#A0522D', speed: 120, life: 0.4, size: 2,
+    });
+  } else if (obj.name === 'flower') {
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 5, {
+      color: '#DD88CC', speed: 140, life: 0.5, size: 2,
     });
   }
 }
@@ -127,7 +165,7 @@ function tick(now) {
 
     if (input.consumeClick()) {
       const world = screenToWorld(input.mouseX, input.mouseY);
-      const obj = map.findTreeAt(world.x, world.y) || map.findRockAt(world.x, world.y);
+      const obj = map.findAt(world.x, world.y);
       if (obj) {
         const alive = obj.hit(1, 5);
         onHit(obj);
@@ -186,6 +224,12 @@ function tick(now) {
 
 async function start() {
   await assets.loadAll(assetManifest);
+
+  // Register programmatic plant textures
+  assets.registerTexture(TEXTURES.BUSH, getBushTexture());
+  assets.registerTexture(TEXTURES.MUSHROOM, getMushroomTexture());
+  assets.registerTexture(TEXTURES.FLOWER, getFlowerTexture());
+
   map.generate();
   birds.setTrees(map.getTrees());
   running = true;

@@ -25,6 +25,18 @@ export function getItemIcon(type) {
     case 'STONE':
       drawStone(d);
       break;
+    case 'BERRY':
+      drawBerry(d);
+      break;
+    case 'MUSHROOM':
+      drawMushroom(d);
+      break;
+    case 'FLOWER':
+      drawFlower(d);
+      break;
+    case 'FIBER':
+      drawFiber(d);
+      break;
     default:
       // Fallback: solid color square
       const col = hexToRgba('#888');
@@ -217,4 +229,277 @@ function createBirdFrame(wingsDown) {
 function hexToRgba(hex) {
   const h = parseInt(hex.slice(1), 16);
   return [(h >> 16) & 255, (h >> 8) & 255, h & 255];
+}
+
+// ---- Berry ----
+
+function drawBerry(d) {
+  for (let y = 0; y < 16; y++) {
+    for (let x = 0; x < 16; x++) {
+      const cx = x - 8, cy = y - 8;
+      const dist = Math.sqrt(cx * cx + cy * cy);
+      let color;
+      if (dist > 5) {
+        color = [0, 0, 0, 0]; // transparent
+      } else if (dist > 4) {
+        color = [140, 30, 30, 255]; // dark edge
+      } else if (cx < -2 && cy < -2) {
+        color = [255, 160, 160, 255]; // highlight
+      } else {
+        color = [200, 50, 50, 255]; // red berry
+      }
+      const idx = (y * 16 + x) * 4;
+      d[idx] = color[0]; d[idx + 1] = color[1]; d[idx + 2] = color[2]; d[idx + 3] = color[3];
+    }
+  }
+  // Tiny green stem
+  setPixel(d, 8, 2, [70, 140, 50, 255]);
+  setPixel(d, 8, 1, [70, 140, 50, 255]);
+}
+
+// ---- Mushroom (item) ----
+
+function drawMushroom(d) {
+  for (let y = 0; y < 16; y++) {
+    for (let x = 0; x < 16; x++) {
+      let color = [0, 0, 0, 0];
+      // Cap: dome shape, upper part
+      const capDist = Math.sqrt((x - 8) ** 2 + (y - 5) ** 2);
+      if (y >= 2 && y <= 7 && capDist <= 6) {
+        color = [180, 120, 60, 255]; // tan cap
+        if (capDist > 5) color = [140, 90, 40, 255]; // edge
+        if (capDist <= 1.5) color = [220, 180, 120, 255]; // top highlight
+      }
+      // Stem
+      if (x >= 6 && x <= 10 && y >= 7 && y <= 12) {
+        color = [220, 200, 170, 255];
+        if (x === 6 || x === 10 || y === 12) color = [180, 160, 130, 255];
+      }
+      // Gill line
+      if (x >= 6 && x <= 10 && y === 7) color = [160, 100, 50, 255];
+      const idx = (y * 16 + x) * 4;
+      d[idx] = color[0]; d[idx + 1] = color[1]; d[idx + 2] = color[2]; d[idx + 3] = color[3];
+    }
+  }
+}
+
+// ---- Flower (item) ----
+
+function drawFlower(d) {
+  for (let y = 0; y < 16; y++) {
+    for (let x = 0; x < 16; x++) {
+      let color = [0, 0, 0, 0];
+      // Petals - 5 around center
+      const cx = x - 8, cy = y - 8;
+      const angle = Math.atan2(cy, cx);
+      const dist = Math.sqrt(cx * cx + cy * cy);
+      const petalIdx = Math.floor((angle + Math.PI * 2 + 0.3) / (Math.PI * 2 / 5)) % 5;
+      if (dist > 1.5 && dist <= 4.5 && (Math.abs(cx) > 1.5 || Math.abs(cy) > 1.5)) {
+        color = petalIdx % 2 === 0 ? [220, 100, 180, 255] : [240, 140, 200, 255]; // pink petals
+      } else if (dist <= 2) {
+        color = [255, 220, 50, 255]; // yellow center
+      }
+      // Stem
+      if (x >= 7 && x <= 9 && y >= 11 && y <= 15) {
+        color = [70, 160, 50, 255];
+      }
+      const idx = (y * 16 + x) * 4;
+      d[idx] = color[0]; d[idx + 1] = color[1]; d[idx + 2] = color[2]; d[idx + 3] = color[3];
+    }
+  }
+}
+
+// ---- Fiber ----
+
+function drawFiber(d) {
+  // Fill transparent
+  for (let i = 0; i < 256; i++) {
+    d[i * 4 + 3] = 0;
+  }
+  // Three wavy green lines
+  const pts = [
+    [[2, 4], [4, 5], [7, 3], [10, 5], [13, 3]],
+    [[3, 8], [5, 9], [8, 7], [11, 9], [14, 8]],
+    [[3, 12], [6, 13], [9, 11], [12, 13], [14, 12]],
+  ];
+  for (const line of pts) {
+    for (let i = 0; i < line.length - 1; i++) {
+      const [x1, y1] = line[i];
+      const [x2, y2] = line[i + 1];
+      const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
+      for (let s = 0; s <= steps; s++) {
+        const x = x1 + (x2 - x1) * s / steps;
+        const y = y1 + (y2 - y1) * s / steps;
+        setPixel(d, Math.round(x), Math.round(y), [100, 180, 60, 255]);
+      }
+    }
+  }
+}
+
+/** Set a single pixel in the image data. */
+function setPixel(d, x, y, color) {
+  if (x < 0 || x >= 16 || y < 0 || y >= 16) return;
+  const idx = (y * 16 + x) * 4;
+  d[idx] = color[0];
+  d[idx + 1] = color[1];
+  d[idx + 2] = color[2];
+  d[idx + 3] = color[3] ?? 255;
+}
+
+// ---- Plant map textures (16×16 pixel art, same as game textures) ----
+
+const PT = 16;
+
+/** Draw a 16×16 pixel-art texture from a character grid. */
+function drawPlantPixelArt(ctx, grid, colors) {
+  for (let y = 0; y < 16 && y < grid.length; y++) {
+    for (let x = 0; x < 16 && x < grid[y].length; x++) {
+      const ch = grid[y][x];
+      if (ch === '.' || !colors[ch]) continue;
+      ctx.fillStyle = colors[ch];
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+}
+
+/**
+ * Generate a 16×16 pixel-art bush texture.
+ * @returns {HTMLCanvasElement}
+ */
+export function getBushTexture() {
+  const c = document.createElement('canvas');
+  c.width = PT;
+  c.height = PT;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const grid = [
+    '................',
+    '....#####.......',
+    '...#######......',
+    '..#########.#...',
+    '..##########....',
+    '.###########....',
+    '.############...',
+    '.#######o####...',
+    '..######o###....',
+    '..############..',
+    '...##o#######...',
+    '....#####.o##...',
+    '....######.##...',
+    '.....#######....',
+    '......#####.....',
+    '.......###......',
+  ];
+
+  drawPlantPixelArt(ctx, grid, {
+    '#': '#3D7A33',
+    '@': '#5A9E4E',
+  });
+
+  // Berries (overdraw)
+  const berries = [[7, 7], [9, 9], [7, 11]];
+  for (const [bx, by] of berries) {
+    ctx.fillStyle = '#CC3333';
+    ctx.fillRect(bx, by, 2, 2);
+    ctx.fillStyle = '#FF8888';
+    ctx.fillRect(bx, by, 1, 1);
+  }
+
+  return c;
+}
+
+/**
+ * Generate a 16×16 pixel-art mushroom texture.
+ * @returns {HTMLCanvasElement}
+ */
+export function getMushroomTexture() {
+  const c = document.createElement('canvas');
+  c.width = PT;
+  c.height = PT;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const grid = [
+    '................',
+    '................',
+    '....rrrr........',
+    '...rrrrrr.......',
+    '..rrwrrwrr......',
+    '..rrrrrrrr......',
+    '..rrrrrrrr......',
+    '...ssssss.......',
+    '...ssssss.......',
+    '...ssssss.......',
+    '....ssss........',
+    '....ssss........',
+    '.....ss.........',
+    '.....ss.........',
+    '................',
+    '................',
+  ];
+
+  drawPlantPixelArt(ctx, grid, {
+    'r': '#CC3333',
+    'w': '#FFF8F0',
+    's': '#E8DCC8',
+  });
+
+  // Cap outline
+  ctx.fillStyle = '#992222';
+  ctx.fillRect(4, 3, 1, 1);
+  ctx.fillRect(4 + 5, 3, 1, 1);
+  ctx.fillRect(3, 5, 1, 1);
+  ctx.fillRect(3 + 8, 5, 1, 1);
+  for (let x = 4; x <= 10; x++) {
+    ctx.fillStyle = '#992222';
+    ctx.fillRect(x, 6, 1, 1);
+  }
+
+  return c;
+}
+
+/**
+ * Generate a 16×16 pixel-art flower texture.
+ * @returns {HTMLCanvasElement}
+ */
+export function getFlowerTexture() {
+  const c = document.createElement('canvas');
+  c.width = PT;
+  c.height = PT;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const P1 = '#DD66AA';
+  const P2 = '#EE88BB';
+  const Y = '#FFDD44';
+
+  const grid = [
+    '................',
+    '..P.P.P.........',
+    '.PPPPPPP........',
+    '.PPPYPPP........',
+    '.PPPPPPP........',
+    '..P.P.P.........',
+    '....GG...........',
+    '....GG...........',
+    '....GG...........',
+    '....GG...........',
+    '...BBG...........',
+    '..BB..B..........',
+    '................',
+    '................',
+    '................',
+    '................',
+  ];
+
+  drawPlantPixelArt(ctx, grid, {
+    'P': P1,
+    'p': P2,
+    'Y': Y,
+    'G': '#5A9E4E',
+    'B': '#3D7A33',
+  });
+
+  return c;
 }

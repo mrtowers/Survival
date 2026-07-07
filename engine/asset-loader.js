@@ -29,4 +29,13 @@ export class AssetLoader {
   getByIndex(index) {
     return this.#images[index];
   }
+
+  /**
+   * Register a programmatically-generated texture (canvas/image).
+   * @param {number} index
+   * @param {HTMLCanvasElement|HTMLImageElement} texture
+   */
+  registerTexture(index, texture) {
+    this.#images[index] = texture;
+  }
 }
