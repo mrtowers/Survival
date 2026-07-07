@@ -9,19 +9,53 @@ export class Renderer {
     this.#assets = assets;
   }
 
+  /** @param {import('./player.js').Player} player */
+  #renderPlayer(player) {
+    const px = Math.round((canvas.width / 2) - (TILE_SIZE / 2));
+    const py = Math.round((canvas.height / 2) - (TILE_SIZE / 2));
+
+    const headImg = this.#assets.getByIndex(player.textureHead);
+    const bodyImg = this.#assets.getByIndex(player.textureBody);
+
+    if (bodyImg) ctx.drawImage(bodyImg, px, py, TILE_SIZE, TILE_SIZE);
+    if (headImg) ctx.drawImage(headImg, px, py, TILE_SIZE, TILE_SIZE);
+  }
+
   /**
-   * Render the game world.
-   * @param {import('./game-object.js').GameObject[]} objects - Visible objects sorted by z
+   * Render the game world with Y-sorting for correct depth.
+   * Objects lower on screen (higher Y) render on top.
+   * @param {import('./game-object.js').GameObject[]} objects
    * @param {import('./player.js').Player} player
    */
   render(objects, player) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
 
-    // Draw world objects
-    for (let i = 0; i < objects.length; i++) {
-      const obj = objects[i];
+    // Build render list with depth = Y position for non-ground objects
+    const renderList = [];
+
+    for (const obj of objects) {
       if (!obj.visible) continue;
+      // Ground tiles (z=0) always render behind everything
+      const depth = obj.z <= 0 ? -Infinity : obj.y;
+      renderList.push({ obj, depth });
+    }
+
+    // Player depth = bottom of player sprite (feet position)
+    const playerDepth = player.y + TILE_SIZE / 2;
+    renderList.push({ depth: playerDepth });
+
+    // Sort ascending: lower depth renders first (behind)
+    renderList.sort((a, b) => a.depth - b.depth);
+
+    for (const entry of renderList) {
+      if (entry.obj === undefined) {
+        // Render player
+        this.#renderPlayer(player);
+        continue;
+      }
+
+      const obj = entry.obj;
 
       if (obj.onRender) {
         obj.onRender();
@@ -37,16 +71,6 @@ export class Renderer {
         ctx.drawImage(img, screenX, screenY, width, height);
       }
     }
-
-    // Draw player centered on screen
-    const px = Math.round((canvas.width / 2) - (TILE_SIZE / 2));
-    const py = Math.round((canvas.height / 2) - (TILE_SIZE / 2));
-
-    const headImg = this.#assets.getByIndex(player.textureHead);
-    const bodyImg = this.#assets.getByIndex(player.textureBody);
-
-    if (headImg) ctx.drawImage(headImg, px, py, TILE_SIZE, TILE_SIZE);
-    if (bodyImg) ctx.drawImage(bodyImg, px, py, TILE_SIZE, TILE_SIZE);
 
     // HUD
     ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
