@@ -26,8 +26,9 @@ export class Renderer {
    * Objects lower on screen (higher Y) render on top.
    * @param {import('./game-object.js').GameObject[]} objects
    * @param {import('./player.js').Player} player
+   * @param {import('./particles.js').ParticleSystem} particles
    */
-  render(objects, player) {
+  render(objects, player, particles) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
 
@@ -61,8 +62,15 @@ export class Renderer {
         obj.onRender();
       }
 
-      const screenX = Math.round((obj.x - obj.sizeX * TILE_SIZE) + (canvas.width / 2) - player.x);
-      const screenY = Math.round((obj.y - obj.sizeY * TILE_SIZE) + (canvas.height / 2) - player.y);
+      let screenX = Math.round((obj.x - obj.sizeX * TILE_SIZE) + (canvas.width / 2) - player.x);
+      let screenY = Math.round((obj.y - obj.sizeY * TILE_SIZE) + (canvas.height / 2) - player.y);
+
+      // Apply shake offset
+      if (obj.shake) {
+        screenX += Math.round(obj.shake.offsetX);
+        screenY += Math.round(obj.shake.offsetY);
+      }
+
       const width = Math.round(TILE_SIZE * obj.sizeX);
       const height = Math.round(TILE_SIZE * obj.sizeY);
 
@@ -71,6 +79,9 @@ export class Renderer {
         ctx.drawImage(img, screenX, screenY, width, height);
       }
     }
+
+    // Particles (on top of everything)
+    particles.render(player.x, player.y);
 
     // HUD
     ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';

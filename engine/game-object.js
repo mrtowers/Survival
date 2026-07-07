@@ -14,11 +14,41 @@ export class GameObject {
   /** @type {function|null} */
   onRender = null;
   name = '';
+  /** Tree/resource health */
+  hp = 1;
+  hpMax = 1;
+  /** @type {{ time: number, offsetX: number, offsetY: number, intensity: number }|null} */
+  shake = null;
 
   constructor(options = {}) {
     Object.assign(this, options);
+    if (this.hpMax > 1 && this.hp === 1) {
+      this.hp = this.hpMax;
+    }
     if (this.textureHover === 0 && this.texture !== 0) {
       this.textureHover = this.texture;
+    }
+  }
+
+  /**
+   * Apply damage and return true if still alive.
+   * @param {number} damage
+   * @param {number} [shakeIntensity]
+   */
+  hit(damage = 1, shakeIntensity = 4) {
+    this.hp -= damage;
+    this.shake = { time: 0.15, offsetX: 0, offsetY: 0, intensity: shakeIntensity };
+    return this.hp > 0;
+  }
+
+  updateShake(dt) {
+    if (!this.shake) return;
+    this.shake.time -= dt;
+    if (this.shake.time <= 0) {
+      this.shake = null;
+    } else {
+      this.shake.offsetX = (Math.random() - 0.5) * 2 * this.shake.intensity;
+      this.shake.offsetY = (Math.random() - 0.5) * 2 * this.shake.intensity;
     }
   }
 }

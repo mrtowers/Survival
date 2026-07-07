@@ -55,6 +55,7 @@ export class GameMap {
             collision: true,
             shading: true,
             sizeY: 3,
+            hpMax: 3,
           });
 
           const anim = new Animation('leaves', [
@@ -109,7 +110,39 @@ export class GameMap {
       }
     }
 
-    visible.sort((a, b) => a.z - b.z);
     return visible;
+  }
+
+  /**
+   * Find a tree near the given world position.
+   * @returns {GameObject|null}
+   */
+  findTreeAt(worldX, worldY) {
+    for (const [, cell] of this.#grid) {
+      for (const obj of cell) {
+        if (obj.name !== 'tree' || !obj.visible) continue;
+        const dx = worldX - obj.x;
+        const dy = worldY - (obj.y - TILE_SIZE * 0.5); // aim at trunk area
+        if (dx * dx + dy * dy < TILE_SIZE * TILE_SIZE) {
+          return obj;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Remove an object from the grid.
+   */
+  removeObject(obj) {
+    obj.visible = false;
+    for (const [, cell] of this.#grid) {
+      const idx = cell.indexOf(obj);
+      if (idx !== -1) {
+        cell.splice(idx, 1);
+        this.#allCount--;
+        break;
+      }
+    }
   }
 }
