@@ -27,10 +27,10 @@ export class Renderer {
         obj.onRender();
       }
 
-      const screenX = (obj.x - obj.sizeX * TILE_SIZE) + (canvas.width / 2) - player.x;
-      const screenY = (obj.y - obj.sizeY * TILE_SIZE) + (canvas.height / 2) - player.y;
-      const width = TILE_SIZE * obj.sizeX;
-      const height = TILE_SIZE * obj.sizeY;
+      const screenX = Math.round((obj.x - obj.sizeX * TILE_SIZE) + (canvas.width / 2) - player.x);
+      const screenY = Math.round((obj.y - obj.sizeY * TILE_SIZE) + (canvas.height / 2) - player.y);
+      const width = Math.round(TILE_SIZE * obj.sizeX);
+      const height = Math.round(TILE_SIZE * obj.sizeY);
 
       const img = this.#assets.getByIndex(obj.texture);
       if (img) {
@@ -39,8 +39,8 @@ export class Renderer {
     }
 
     // Draw player centered on screen
-    const px = (canvas.width / 2) - (TILE_SIZE / 2);
-    const py = (canvas.height / 2) - (TILE_SIZE / 2);
+    const px = Math.round((canvas.width / 2) - (TILE_SIZE / 2));
+    const py = Math.round((canvas.height / 2) - (TILE_SIZE / 2));
 
     const headImg = this.#assets.getByIndex(player.textureHead);
     const bodyImg = this.#assets.getByIndex(player.textureBody);
