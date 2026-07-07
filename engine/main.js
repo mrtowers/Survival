@@ -97,6 +97,8 @@ function onHit(obj) {
 
 let lastTime = 0;
 let running = false;
+/** @type {import('./game-object.js').GameObject[]} */
+let lastVisibleObjects = [];
 
 function tick(now) {
   if (!running) return;
@@ -104,53 +106,72 @@ function tick(now) {
   const delta = Math.min((now - lastTime) / 1000, 0.05); // cap delta
   lastTime = now;
 
-  // ---- Input handling ----
+  // ---- Toggle inventory ----
 
-  player.update(input, delta);
+  if (input.consumeKey('e')) {
+    inventory.toggle();
+  }
 
-  if (input.consumeClick()) {
-    const world = screenToWorld(input.mouseX, input.mouseY);
-    const obj = map.findTreeAt(world.x, world.y) || map.findRockAt(world.x, world.y);
-    if (obj) {
-      const alive = obj.hit(1, 5);
-      onHit(obj);
-      if (!alive) {
-        onDestroyed(obj);
+  // ---- Drag & drop (works even when inventory is open) ----
+
+  inventory.handleDrag(input.justMouseDown, input.justMouseUp, input.mouseX, input.mouseY);
+
+  // ---- Pause game while inventory is open ----
+
+  if (!inventory.isOpen) {
+    // ---- Input handling ----
+
+    player.update(input, delta);
+
+    if (input.consumeClick()) {
+      const world = screenToWorld(input.mouseX, input.mouseY);
+      const obj = map.findTreeAt(world.x, world.y) || map.findRockAt(world.x, world.y);
+      if (obj) {
+        const alive = obj.hit(1, 5);
+        onHit(obj);
+        if (!alive) {
+          onDestroyed(obj);
+        }
       }
     }
-  }
 
-  // ---- Update ground items ----
+    // ---- Update ground items ----
 
-  const groundItems = map.getGroundItems();
-  for (let i = groundItems.length - 1; i >= 0; i--) {
-    const item = groundItems[i];
-    const collected = item.update(delta, player.x, player.y);
-    if (collected) {
-      inventory.add(item.itemType, item.quantity);
-      map.removeGroundItem(item);
+    const groundItems = map.getGroundItems();
+    for (let i = groundItems.length - 1; i >= 0; i--) {
+      const item = groundItems[i];
+      const collected = item.update(delta, player.x, player.y);
+      if (collected) {
+        inventory.add(item.itemType, item.quantity);
+        map.removeGroundItem(item);
+      }
     }
+
+    // ---- Update particles & objects ----
+
+    particles.update(delta);
+
+    const renderDist = getResponsiveRenderDist();
+    const visibleObjects = map.getVisibleObjects(
+      player.x, player.y, renderDist,
+    );
+    for (const obj of visibleObjects) {
+      obj.updateShake(delta);
+    }
+
+    // ---- Render ----
+
+    lastVisibleObjects = visibleObjects;
+    renderer.render(visibleObjects, player, particles, map.getGroundItems());
+  } else {
+    // Inventory is open — just re-render last frame with overlay
+    renderer.render(lastVisibleObjects, player, particles, map.getGroundItems());
   }
 
-  // ---- Update particles & objects ----
-
-  particles.update(delta);
-
-  // Update visible object shake
-  const renderDist = getResponsiveRenderDist();
-  const visibleObjects = map.getVisibleObjects(
-    player.x, player.y, renderDist,
-  );
-  for (const obj of visibleObjects) {
-    obj.updateShake(delta);
-  }
-
-  // ---- Render ----
-
-  renderer.render(visibleObjects, player, particles, map.getGroundItems());
-
-  // Inventory UI (directly on canvas after renderer)
+  // Inventory UI (hotbar always, full inventory if open)
   inventory.render(ctx);
+
+  input.endFrame();
 
   requestAnimationFrame(tick);
 }
