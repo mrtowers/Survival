@@ -64,20 +64,14 @@ export class Renderer {
 
     // Build render list with depth = Y position for non-ground objects
     const renderList = [];
+    /** @type {import('./bird.js').Bird[]} */
+    const birdsList = [];
 
     for (const obj of objects) {
       if (!obj.visible) continue;
       // Ground tiles (z=0) always render behind everything
       const depth = obj.z <= 0 ? -Infinity : obj.y;
       renderList.push({ obj, depth });
-    }
-
-    // Birds with Y-depth sorting
-    if (birds) {
-      for (const bird of birds) {
-        if (!bird.visible) continue;
-        renderList.push({ bird, depth: bird.renderDepth });
-      }
     }
 
     // Player depth = bottom of player sprite (feet position)
@@ -127,12 +121,21 @@ export class Renderer {
             ctx.strokeRect(screenX - 1, screenY - 1, width + 2, height + 2);
           }
         }
-      } else if (entry.bird) {
-        // Render bird
-        this.#renderBird(entry.bird, player.x, player.y);
       } else {
         // Render player
         this.#renderPlayer(player);
+      }
+    }
+
+    // Birds always render above all game objects (Y-sorted among themselves)
+    if (birds) {
+      for (const bird of birds) {
+        if (!bird.visible) continue;
+        birdsList.push(bird);
+      }
+      birdsList.sort((a, b) => a.renderDepth - b.renderDepth);
+      for (const bird of birdsList) {
+        this.#renderBird(bird, player.x, player.y);
       }
     }
 
