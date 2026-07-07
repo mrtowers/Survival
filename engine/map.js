@@ -86,7 +86,7 @@ export class GameMap {
             hpMax: 3,
           });
           this.#add(i, j, rock);
-        } else if (roll < 16) {
+        } else if (roll < 18) {
           const bush = new GameObject({
             name: 'bush',
             x: i * TILE_SIZE,
@@ -97,7 +97,7 @@ export class GameMap {
             hpMax: 2,
           });
           this.#add(i, j, bush);
-        } else if (roll < 18) {
+        } else if (roll < 20) {
           const mushroom = new GameObject({
             name: 'mushroom',
             x: i * TILE_SIZE,
@@ -108,7 +108,7 @@ export class GameMap {
             hpMax: 1,
           });
           this.#add(i, j, mushroom);
-        } else if (roll < 20) {
+        } else if (roll < 22) {
           const flower = new GameObject({
             name: 'flower',
             x: i * TILE_SIZE,
@@ -119,6 +119,39 @@ export class GameMap {
             hpMax: 1,
           });
           this.#add(i, j, flower);
+        } else if (roll < 30) {
+          const tallGrass = new GameObject({
+            name: 'tall_grass',
+            x: i * TILE_SIZE,
+            y: j * TILE_SIZE,
+            z: 1,
+            texture: TEXTURES.TALL_GRASS,
+            collision: false,
+            hpMax: 1,
+          });
+          this.#add(i, j, tallGrass);
+        } else if (roll < 32) {
+          const stump = new GameObject({
+            name: 'stump',
+            x: i * TILE_SIZE,
+            y: j * TILE_SIZE,
+            z: 1,
+            texture: TEXTURES.STUMP,
+            collision: true,
+            hpMax: 2,
+          });
+          this.#add(i, j, stump);
+        } else if (roll < 37) {
+          const smallBush = new GameObject({
+            name: 'bush_small',
+            x: i * TILE_SIZE,
+            y: j * TILE_SIZE,
+            z: 1,
+            texture: TEXTURES.BUSH_SMALL,
+            collision: false,
+            hpMax: 1,
+          });
+          this.#add(i, j, smallBush);
         }
       }
     }
@@ -161,7 +194,7 @@ export class GameMap {
     for (const [, cell] of this.#grid) {
       for (const obj of cell) {
         if (!obj.visible) continue;
-        const interactable = ['tree', 'rock', 'bush', 'mushroom', 'flower'];
+        const interactable = ['tree', 'rock', 'bush', 'mushroom', 'flower', 'tall_grass', 'stump', 'bush_small'];
         if (!interactable.includes(obj.name)) continue;
         const dx = worldX - obj.x;
         const dy = worldY - (obj.name === 'tree' ? obj.y - TILE_SIZE * 0.5 : obj.y);

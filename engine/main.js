@@ -7,7 +7,7 @@ import { Renderer } from './renderer.js';
 import { ParticleSystem } from './particles.js';
 import { Inventory } from './inventory.js';
 import { BirdManager } from './bird.js';
-import { getBushTexture, getMushroomTexture, getFlowerTexture } from './item-icons.js';
+import { getBushTexture, getMushroomTexture, getFlowerTexture, getTallGrassTexture, getStumpTexture, getSmallBushTexture } from './item-icons.js';
 import { TILE_SIZE, TEXTURES } from './constants.js';
 
 // --- Bootstrap ---
@@ -101,6 +101,30 @@ function onDestroyed(obj) {
       life: 0.5,
       size: 2,
     });
+  } else if (obj.name === 'tall_grass') {
+    map.dropItems(obj.x, obj.y + TILE_SIZE * 0.5, 'FIBER', 1, 2);
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 8, {
+      color: '#6BAA4E',
+      speed: 180,
+      life: 0.6,
+      size: 3,
+    });
+  } else if (obj.name === 'stump') {
+    map.dropItems(obj.x, obj.y + TILE_SIZE * 0.5, 'WOOD', 1, 2);
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 8, {
+      color: '#8B5E3C',
+      speed: 200,
+      life: 0.7,
+      size: 3,
+    });
+  } else if (obj.name === 'bush_small') {
+    map.dropItems(obj.x, obj.y + TILE_SIZE * 0.5, 'FIBER', 1, 2);
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 8, {
+      color: '#4A7A3E',
+      speed: 160,
+      life: 0.5,
+      size: 3,
+    });
   }
 }
 
@@ -129,6 +153,18 @@ function onHit(obj) {
   } else if (obj.name === 'flower') {
     particles.emit(obj.x - TILE_SIZE / 2, obj.y, 5, {
       color: '#DD88CC', speed: 140, life: 0.5, size: 2,
+    });
+  } else if (obj.name === 'tall_grass') {
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 5, {
+      color: '#6BAA4E', speed: 160, life: 0.5, size: 3,
+    });
+  } else if (obj.name === 'stump') {
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 5, {
+      color: '#8B5E3C', speed: 180, life: 0.5, size: 3,
+    });
+  } else if (obj.name === 'bush_small') {
+    particles.emit(obj.x - TILE_SIZE / 2, obj.y, 5, {
+      color: '#4A7A3E', speed: 140, life: 0.5, size: 3,
     });
   }
 }
@@ -229,6 +265,9 @@ async function start() {
   assets.registerTexture(TEXTURES.BUSH, getBushTexture());
   assets.registerTexture(TEXTURES.MUSHROOM, getMushroomTexture());
   assets.registerTexture(TEXTURES.FLOWER, getFlowerTexture());
+  assets.registerTexture(TEXTURES.TALL_GRASS, getTallGrassTexture());
+  assets.registerTexture(TEXTURES.STUMP, getStumpTexture());
+  assets.registerTexture(TEXTURES.BUSH_SMALL, getSmallBushTexture());
 
   map.generate();
   birds.setTrees(map.getTrees());

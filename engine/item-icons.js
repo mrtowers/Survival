@@ -503,3 +503,129 @@ export function getFlowerTexture() {
 
   return c;
 }
+
+/**
+ * Generate a 16×16 pixel-art tall grass texture.
+ * @returns {HTMLCanvasElement}
+ */
+export function getTallGrassTexture() {
+  const c = document.createElement('canvas');
+  c.width = PT;
+  c.height = PT;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const grid = [
+    '................',
+    '....g.g.g......',
+    '...gg.gg.g....g.',
+    '..gGgGgGgG....g.',
+    '..gGgGgGgGg..g..',
+    '.gGgGgGgGgG..g..',
+    '.gGgGgGgGgG.g...',
+    '.gGgGgGgGgG.g...',
+    '..gGgGgGgGg.....',
+    '..gggGgggGgg..g.',
+    '...gg.gg.gg...g.',
+    '....g...g.......',
+    '................',
+    '................',
+    '................',
+    '................',
+  ];
+
+  drawPlantPixelArt(ctx, grid, {
+    'g': '#6BAA4E',
+    'G': '#4B8A3E',
+  });
+
+  return c;
+}
+
+/**
+ * Generate a 16×16 pixel-art stump texture.
+ * @returns {HTMLCanvasElement}
+ */
+export function getStumpTexture() {
+  const c = document.createElement('canvas');
+  c.width = PT;
+  c.height = PT;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const grid = [
+    '................',
+    '....#####.......',
+    '...######.......',
+    '..##.x.##.......',
+    '..##.x.##.......',
+    '..########.......',
+    '..########.......',
+    '..########.......',
+    '...######.........',
+    '...######.........',
+    '....####..........',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ];
+
+  drawPlantPixelArt(ctx, grid, {
+    '#': '#8B5E3C',
+    'x': '#6B4226',
+  });
+
+  // Rings
+  ctx.fillStyle = '#A0724B';
+  ctx.fillRect(5, 3, 1, 1);
+  ctx.fillRect(5 + 4, 3, 1, 1);
+  ctx.fillRect(5, 5, 1, 1);
+  ctx.fillRect(5 + 4, 5, 1, 1);
+
+  return c;
+}
+
+/**
+ * Generate a 16×16 pixel-art small decorative bush texture.
+ * @returns {HTMLCanvasElement}
+ */
+export function getSmallBushTexture() {
+  const c = document.createElement('canvas');
+  c.width = PT;
+  c.height = PT;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const grid = [
+    '................',
+    '................',
+    '....#####.......',
+    '...#######......',
+    '..#########.....',
+    '..##########....',
+    '..##########....',
+    '..##########....',
+    '...#########....',
+    '....#######.....',
+    '.....#####......',
+    '......###.......',
+    '................',
+    '................',
+    '................',
+    '................',
+  ];
+
+  drawPlantPixelArt(ctx, grid, {
+    '#': '#4A7A3E',
+  });
+
+  // Lighter top highlight
+  ctx.fillStyle = '#6AAA5E';
+  ctx.fillRect(4, 3, 1, 1);
+  ctx.fillRect(4 + 5, 3, 1, 1);
+  ctx.fillRect(4, 6, 1, 1);
+
+  return c;
+}
