@@ -27,8 +27,9 @@ export class Renderer {
    * @param {import('./game-object.js').GameObject[]} objects
    * @param {import('./player.js').Player} player
    * @param {import('./particles.js').ParticleSystem} particles
+   * @param {import('./items.js').GroundItem[]} [groundItems]
    */
-  render(objects, player, particles) {
+  render(objects, player, particles, groundItems) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
 
@@ -90,6 +91,37 @@ export class Renderer {
 
     // Particles (on top of everything)
     particles.render(player.x, player.y);
+
+    // Ground items (on top of everything)
+    if (groundItems) {
+      for (const item of groundItems) {
+        if (!item.quantity) continue;
+        const sx = Math.round(item.x - player.x + canvas.width / 2);
+        const sy = Math.round(item.y - player.y + canvas.height / 2);
+        const s = Math.round(14 * item.scale);
+
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(item.rotation);
+
+        // Square
+        ctx.fillStyle = item.color;
+        ctx.fillRect(-s / 2, -s / 2, s, s);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-s / 2, -s / 2, s, s);
+
+        // Quantity label
+        ctx.rotate(-item.rotation);
+        ctx.fillStyle = '#fff';
+        ctx.font = `${Math.round(11 * item.scale)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.quantity, 0, 1);
+
+        ctx.restore();
+      }
+    }
 
     // HUD
     ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';

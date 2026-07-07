@@ -1,10 +1,13 @@
 import { TILE_SIZE, MAP_RADIUS, TEXTURES } from './constants.js';
 import { GameObject, Animation } from './game-object.js';
+import { GroundItem } from './items.js';
 
 export class GameMap {
   /** @type {Map<string, GameObject[]>} */
   #grid = new Map();
   #allCount = 0;
+  /** @type {GroundItem[]} */
+  #groundItems = [];
 
   generate() {
     this.#generateGround();
@@ -80,6 +83,7 @@ export class GameMap {
             texture: TEXTURES.STONE,
             textureHover: TEXTURES.STONE_HOVER,
             collision: true,
+            hpMax: 3,
           });
           this.#add(i, j, rock);
         }
@@ -133,6 +137,24 @@ export class GameMap {
   }
 
   /**
+   * Find a rock near the given world position.
+   * @returns {GameObject|null}
+   */
+  findRockAt(worldX, worldY) {
+    for (const [, cell] of this.#grid) {
+      for (const obj of cell) {
+        if (obj.name !== 'rock' || !obj.visible) continue;
+        const dx = worldX - obj.x;
+        const dy = worldY - obj.y;
+        if (dx * dx + dy * dy < TILE_SIZE * TILE_SIZE) {
+          return obj;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * Remove an object from the grid.
    */
   removeObject(obj) {
@@ -145,5 +167,32 @@ export class GameMap {
         break;
       }
     }
+  }
+
+  /**
+   * Drop items on the ground.
+   * @param {number} x - World X
+   * @param {number} y - World Y
+   * @param {string} itemType - key from ITEMS
+   * @param {number} min
+   * @param {number} max
+   */
+  dropItems(x, y, itemType, min, max) {
+    const count = min + Math.floor(Math.random() * (max - min + 1));
+    this.#groundItems.push(new GroundItem(x, y, itemType, count));
+  }
+
+  /** @returns {GroundItem[]} */
+  getGroundItems() {
+    return this.#groundItems;
+  }
+
+  /**
+   * Remove a ground item after pickup.
+   * @param {GroundItem} item
+   */
+  removeGroundItem(item) {
+    const idx = this.#groundItems.indexOf(item);
+    if (idx !== -1) this.#groundItems.splice(idx, 1);
   }
 }
