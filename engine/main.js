@@ -8,7 +8,7 @@ import { ParticleSystem } from './particles.js';
 import { Inventory } from './inventory.js';
 import { BirdManager } from './bird.js';
 import { getBushTexture, getMushroomTexture, getFlowerTexture, getTallGrassTexture, getStumpTexture, getSmallBushTexture } from './item-icons.js';
-import { TILE_SIZE, TEXTURES } from './constants.js';
+import { TILE_SIZE, TEXTURES, INTERACTION_RANGE } from './constants.js';
 
 // --- Bootstrap ---
 
@@ -195,6 +195,24 @@ function tick(now) {
   // ---- Pause game while inventory is open ----
 
   if (!inventory.isOpen) {
+    // ---- Hover detection (per-frame) ----
+
+    // Clear previous hover flags
+    for (const obj of lastVisibleObjects) {
+      obj.hovered = false;
+    }
+
+    const mouseWorld = screenToWorld(input.mouseX, input.mouseY);
+    const hoveredObj = map.findAt(mouseWorld.x, mouseWorld.y);
+    if (hoveredObj) {
+      // Distance check: use bottom-center of the object (where player stands)
+      const dx = hoveredObj.x - player.x;
+      const dy = hoveredObj.y - player.y;
+      if (dx * dx + dy * dy <= INTERACTION_RANGE * INTERACTION_RANGE) {
+        hoveredObj.hovered = true;
+      }
+    }
+
     // ---- Input handling ----
 
     player.update(input, delta);
@@ -203,10 +221,14 @@ function tick(now) {
       const world = screenToWorld(input.mouseX, input.mouseY);
       const obj = map.findAt(world.x, world.y);
       if (obj) {
-        const alive = obj.hit(1, 5);
-        onHit(obj);
-        if (!alive) {
-          onDestroyed(obj);
+        const dx = obj.x - player.x;
+        const dy = obj.y - player.y;
+        if (dx * dx + dy * dy <= INTERACTION_RANGE * INTERACTION_RANGE) {
+          const alive = obj.hit(1, 5);
+          onHit(obj);
+          if (!alive) {
+            onDestroyed(obj);
+          }
         }
       }
     }

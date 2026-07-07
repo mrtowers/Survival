@@ -119,6 +119,13 @@ export class Renderer {
           } else {
             ctx.drawImage(img, screenX, screenY, width, height);
           }
+
+          // Hover highlight outline
+          if (obj.hovered) {
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(screenX - 1, screenY - 1, width + 2, height + 2);
+          }
         }
       } else if (entry.bird) {
         // Render bird

@@ -186,24 +186,38 @@ export class GameMap {
 
   /**
    * Find any interactable object near the given world position.
+   * Uses precise AABB hit-testing and picks the top-most object.
    * @param {number} worldX
    * @param {number} worldY
    * @returns {GameObject|null}
    */
   findAt(worldX, worldY) {
+    const interactable = ['tree', 'rock', 'bush', 'mushroom', 'flower', 'tall_grass', 'stump', 'bush_small'];
+    /** @type {GameObject|null} */
+    let best = null;
+    let bestZ = -Infinity;
+
     for (const [, cell] of this.#grid) {
       for (const obj of cell) {
         if (!obj.visible) continue;
-        const interactable = ['tree', 'rock', 'bush', 'mushroom', 'flower', 'tall_grass', 'stump', 'bush_small'];
         if (!interactable.includes(obj.name)) continue;
-        const dx = worldX - obj.x;
-        const dy = worldY - (obj.name === 'tree' ? obj.y - TILE_SIZE * 0.5 : obj.y);
-        if (dx * dx + dy * dy < TILE_SIZE * TILE_SIZE) {
-          return obj;
+
+        // AABB: rendered top-left to bottom-right
+        const left = obj.x - obj.sizeX * TILE_SIZE;
+        const right = obj.x;
+        const top = obj.y - obj.sizeY * TILE_SIZE;
+        const bottom = obj.y;
+
+        if (worldX >= left && worldX <= right && worldY >= top && worldY <= bottom) {
+          // Prefer higher z (closer to camera), then smaller area
+          if (obj.z > bestZ || (obj.z === bestZ && (!best || (obj.sizeX * obj.sizeY) < (best.sizeX * best.sizeY)))) {
+            best = obj;
+            bestZ = obj.z;
+          }
         }
       }
     }
-    return null;
+    return best;
   }
 
   /** Keep for backward compatibility. */

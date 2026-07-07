@@ -2,6 +2,7 @@ export const TILE_SIZE = 50;
 export const MAP_RADIUS = 200;
 export const RENDER_DIST = 500;
 export const PLAYER_SPEED = 240;
+export const INTERACTION_RANGE = TILE_SIZE * 2.5; // how close player must be to interact
 
 export const TEXTURES = {
   TEST: 0,

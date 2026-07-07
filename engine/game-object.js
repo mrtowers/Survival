@@ -21,6 +21,8 @@ export class GameObject {
   hpMax = 1;
   /** @type {{ time: number, offsetX: number, offsetY: number, intensity: number }|null} */
   shake = null;
+  /** Is the cursor hovering over this object (for highlight)? */
+  hovered = false;
 
   constructor(options = {}) {
     Object.assign(this, options);
