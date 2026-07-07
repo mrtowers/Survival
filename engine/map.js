@@ -34,6 +34,7 @@ export class GameMap {
           y: j * TILE_SIZE,
           texture: TEXTURES.GRASS,
           textureHover: TEXTURES.GRASS,
+          rotation: (Math.PI / 2) * Math.floor(Math.random() * 4),
         });
         this.#add(i, j, grass);
       }

@@ -9,6 +9,8 @@ export class GameObject {
   shading = false;
   sizeX = 1;
   sizeY = 1;
+  /** Rotation in radians */
+  rotation = 0;
   /** @type {Animation|null} */
   animation = null;
   /** @type {function|null} */

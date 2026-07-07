@@ -76,7 +76,15 @@ export class Renderer {
 
       const img = this.#assets.getByIndex(obj.texture);
       if (img) {
-        ctx.drawImage(img, screenX, screenY, width, height);
+        if (obj.rotation) {
+          ctx.save();
+          ctx.translate(screenX + width / 2, screenY + height / 2);
+          ctx.rotate(obj.rotation);
+          ctx.drawImage(img, -width / 2, -height / 2, width, height);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, screenX, screenY, width, height);
+        }
       }
     }
 
