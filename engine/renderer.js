@@ -239,10 +239,29 @@ export class Renderer {
 
         const img = this.#assets.getByIndex(obj.texture);
         if (img) {
-          if (obj.rotation) {
+          const hasRotation = obj.rotation !== 0;
+          const hasSquash = obj.squash < 1;
+
+          if (hasRotation || hasSquash) {
             ctx.save();
-            ctx.translate(screenX + width / 2, screenY + height / 2);
-            ctx.rotate(obj.rotation);
+            const cx = screenX + width / 2;
+            const cy = screenY + height / 2;
+
+            ctx.translate(cx, cy);
+
+            if (hasRotation) {
+              ctx.rotate(obj.rotation);
+            }
+
+            if (hasSquash) {
+              // Grass leans away from the entity using skew transform.
+              // squashDir: 1 = entity on left → lean right, -1 = entity on right → lean left.
+              // Negative skewX shifts top right, bottom left (lean right).
+              const lean = (1 - obj.squash) * obj.squashDir * 0.5;
+              ctx.transform(1, 0, -lean, 1, 0, 0);
+              ctx.scale(obj.squash, 1);
+            }
+
             ctx.drawImage(img, -width / 2, -height / 2, width, height);
             ctx.restore();
           } else {

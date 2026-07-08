@@ -10,7 +10,7 @@ import { BirdManager } from './bird.js';
 import { MobManager } from './mob.js';
 import { CraftingSystem } from './crafting.js';
 import { CraftingUI } from './crafting-ui.js';
-import { getBushTexture, getMushroomTexture, getFlowerTexture, getTallGrassTexture, getStumpTexture, getSmallBushTexture, getCactusTexture, getDeadTreeTexture, getWorkbenchTexture, getCampfireTexture, getCampfireAltTexture, getWallTexture } from './item-icons.js';
+import { getBushTexture, getMushroomTexture, getFlowerTexture, getTallGrassTexture, getStumpTexture, getSmallBushTexture, getCactusTexture, getDeadTreeTexture, getWorkbenchTexture, getCampfireTexture, getCampfireAltTexture, getWallTexture, getGrassBladeTexture } from './item-icons.js';
 import { BuildingSystem } from './building.js';
 import { TILE_SIZE, TEXTURES, INTERACTION_RANGE, DAY_LENGTH } from './constants.js';
 import { DayCycle } from './day-cycle.js';
@@ -118,6 +118,10 @@ function onDestroyed(obj) {
       size: 2,
     });
   } else if (obj.name === 'tall_grass') {
+    // Destroy all blades in the cluster, drop loot once
+    if (obj.clusterKey) {
+      map.destroyCluster(obj.clusterKey);
+    }
     map.dropItems(obj.x, obj.y + TILE_SIZE * 0.5, 'FIBER', 1, 2);
     particles.emit(obj.x - TILE_SIZE / 2, obj.y, 8, {
       color: '#6BAA4E',
@@ -190,6 +194,15 @@ function onHit(obj) {
     particles.emit(obj.x - TILE_SIZE / 2, obj.y, 5, {
       color: '#6BAA4E', speed: 160, life: 0.5, size: 3,
     });
+    // Also shake nearby blades in the same cluster
+    if (obj.clusterKey) {
+      const nearby = map.getObjectsInRadius(obj.x, obj.y, 1);
+      for (const n of nearby) {
+        if (n.clusterKey === obj.clusterKey && n !== obj) {
+          n.shake = { time: 0.1, offsetX: 0, offsetY: 0, intensity: 2 };
+        }
+      }
+    }
   } else if (obj.name === 'stump') {
     particles.emit(obj.x - TILE_SIZE / 2, obj.y, 5, {
       color: '#8B5E3C', speed: 180, life: 0.5, size: 3,
@@ -453,6 +466,49 @@ function tick(now) {
     );
     for (const obj of visibleObjects) {
       obj.updateShake(delta);
+
+      // ---- Grass/vegetation bending ----
+
+      const squashable = ['tall_grass', 'bush', 'bush_small', 'flower'];
+      if (squashable.includes(obj.name)) {
+        // Check player proximity
+        const pDx = player.x - obj.x;
+        const pDy = player.y - obj.y;
+        const pDist = Math.sqrt(pDx * pDx + pDy * pDy);
+        const squashThreshold = TILE_SIZE * 0.55;
+
+        let touching = false;
+
+        if (pDist < squashThreshold) {
+          touching = true;
+          obj.squashDir = pDx > 0 ? -1 : 1;
+        } else {
+          // Check mob proximity
+          const mobList = mobs.getMobs();
+          for (const mob of mobList) {
+            if (mob.state === 'death') continue;
+            const mDx = mob.x - obj.x;
+            const mDy = mob.y - obj.y;
+            const mDist = Math.sqrt(mDx * mDx + mDy * mDy);
+            if (mDist < squashThreshold) {
+              touching = true;
+              obj.squashDir = mDx > 0 ? -1 : 1;
+              break;
+            }
+          }
+        }
+
+        if (touching) {
+          obj.squash = Math.max(0.3, obj.squash - delta * 8);
+          obj.squashTimer = 0.25;
+        } else if (obj.squashTimer > 0) {
+          obj.squashTimer -= delta;
+          // Smooth spring-back
+          obj.squash = 1 - (1 - obj.squash) * 0.85;
+        } else {
+          obj.squash = 1;
+        }
+      }
     }
 
     // ---- Render ----
@@ -506,6 +562,12 @@ async function start() {
   assets.registerTexture(TEXTURES.CAMPFIRE_TEX, getCampfireTexture());
   assets.registerTexture(TEXTURES.CAMPFIRE_ALT, getCampfireAltTexture());
   assets.registerTexture(TEXTURES.WALL, getWallTexture());
+
+  // Grass blade textures (multi-blade clusters)
+  assets.registerTexture(TEXTURES.GRASS_BLADE_1, getGrassBladeTexture(0));
+  assets.registerTexture(TEXTURES.GRASS_BLADE_2, getGrassBladeTexture(1));
+  assets.registerTexture(TEXTURES.GRASS_BLADE_3, getGrassBladeTexture(2));
+  assets.registerTexture(TEXTURES.GRASS_BLADE_4, getGrassBladeTexture(3));
 
   map.generate();
   birds.setTrees(map.getTrees());

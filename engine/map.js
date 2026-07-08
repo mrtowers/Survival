@@ -121,6 +121,50 @@ export class GameMap {
   }
 
   /** Forest: dense vegetation, trees, mushrooms, flowers */
+  /**
+   * Place a cluster of individual grass blade objects at a tile position.
+   * Blades share a clusterKey so they can be harvested as a group.
+   * @param {number} tx - Tile X
+   * @param {number} ty - Tile Y
+   */
+  #placeGrassCluster(tx, ty) {
+    const BLADE_TEXS = [
+      TEXTURES.GRASS_BLADE_1,
+      TEXTURES.GRASS_BLADE_2,
+      TEXTURES.GRASS_BLADE_3,
+      TEXTURES.GRASS_BLADE_4,
+    ];
+    const clusterKey = `${tx},${ty}`;
+
+    // Positions within the tile for each blade (relative to tile center)
+    const offsets = [
+      { ox: -0.3, oy: -0.1, tex: BLADE_TEXS[0], sz: 0.18 },
+      { ox: -0.15, oy: -0.25, tex: BLADE_TEXS[1], sz: 0.2 },
+      { ox: 0.0, oy: -0.3, tex: BLADE_TEXS[2], sz: 0.22 },
+      { ox: 0.2, oy: -0.2, tex: BLADE_TEXS[3], sz: 0.17 },
+      { ox: -0.2, oy: 0.1, tex: BLADE_TEXS[0], sz: 0.19 },
+      { ox: 0.05, oy: 0.0, tex: BLADE_TEXS[1], sz: 0.24 },
+      { ox: 0.25, oy: 0.05, tex: BLADE_TEXS[2], sz: 0.18 },
+      { ox: 0.1, oy: 0.2, tex: BLADE_TEXS[3], sz: 0.16 },
+    ];
+
+    for (const off of offsets) {
+      const blade = new GameObject({
+        name: 'tall_grass',
+        x: tx * TILE_SIZE + off.ox * TILE_SIZE,
+        y: ty * TILE_SIZE + off.oy * TILE_SIZE,
+        z: 1,
+        texture: off.tex,
+        collision: false,
+        hpMax: 1,
+        sizeX: off.sz,
+        sizeY: 1,
+      });
+      blade.clusterKey = clusterKey;
+      this.#add(tx, ty, blade);
+    }
+  }
+
   #decorateForest(tx, ty, roll) {
     if (roll < 14) {
       const tree = new GameObject({
@@ -193,16 +237,7 @@ export class GameMap {
       });
       this.#add(tx, ty, flower);
     } else if (roll < 38) {
-      const tallGrass = new GameObject({
-        name: 'tall_grass',
-        x: tx * TILE_SIZE,
-        y: ty * TILE_SIZE,
-        z: 1,
-        texture: TEXTURES.TALL_GRASS,
-        collision: false,
-        hpMax: 1,
-      });
-      this.#add(tx, ty, tallGrass);
+      this.#placeGrassCluster(tx, ty);
     } else if (roll < 40) {
       const stump = new GameObject({
         name: 'stump',
@@ -267,16 +302,7 @@ export class GameMap {
       });
       this.#add(tx, ty, smallBush);
     } else if (roll < 22) {
-      const tallGrass = new GameObject({
-        name: 'tall_grass',
-        x: tx * TILE_SIZE,
-        y: ty * TILE_SIZE,
-        z: 1,
-        texture: TEXTURES.TALL_GRASS,
-        collision: false,
-        hpMax: 1,
-      });
-      this.#add(tx, ty, tallGrass);
+      this.#placeGrassCluster(tx, ty);
     }
   }
 
@@ -342,16 +368,7 @@ export class GameMap {
       });
       this.#add(tx, ty, flower);
     } else if (roll < 26) {
-      const tallGrass = new GameObject({
-        name: 'tall_grass',
-        x: tx * TILE_SIZE,
-        y: ty * TILE_SIZE,
-        z: 1,
-        texture: TEXTURES.TALL_GRASS,
-        collision: false,
-        hpMax: 1,
-      });
-      this.#add(tx, ty, tallGrass);
+      this.#placeGrassCluster(tx, ty);
     } else if (roll < 29) {
       const smallBush = new GameObject({
         name: 'bush_small',
@@ -597,6 +614,27 @@ export class GameMap {
         break;
       }
     }
+  }
+
+  /**
+   * Destroy all objects in a blade cluster (by clusterKey).
+   * Returns the number of objects destroyed.
+   * @param {string} clusterKey
+   * @returns {number}
+   */
+  destroyCluster(clusterKey) {
+    let count = 0;
+    for (const [, cell] of this.#grid) {
+      for (let i = cell.length - 1; i >= 0; i--) {
+        if (cell[i].clusterKey === clusterKey) {
+          cell[i].visible = false;
+          cell.splice(i, 1);
+          this.#allCount--;
+          count++;
+        }
+      }
+    }
+    return count;
   }
 
   /**

@@ -23,6 +23,15 @@ export class GameObject {
   shake = null;
   /** Is the cursor hovering over this object (for highlight)? */
   hovered = false;
+  /**
+   * Squash scale for grass/vegetation bending (1 = normal, 0.3 = fully squashed).
+   * Applied as horizontal scale in the renderer.
+   */
+  squash = 1;
+  /** Time remaining for squash recovery in seconds. */
+  squashTimer = 0;
+  /** Direction of squash: -1 = left, 1 = right. */
+  squashDir = 1;
 
   constructor(options = {}) {
     Object.assign(this, options);

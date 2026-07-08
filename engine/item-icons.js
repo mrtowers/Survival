@@ -960,7 +960,7 @@ export function getFlowerTexture() {
 }
 
 /**
- * Generate a 16×16 pixel-art tall grass texture.
+ * Generate a 16×16 pixel-art tall grass texture (still used for flower/bush clusters).
  * @returns {HTMLCanvasElement}
  */
 export function getTallGrassTexture() {
@@ -994,6 +994,115 @@ export function getTallGrassTexture() {
     'G': '#4B8A3E',
   });
 
+  return c;
+}
+
+/**
+ * Generate individual grass blade textures for multi-blade grass clusters.
+ * Each blade is a thin, tall pixel-art strand with slight variation.
+ * @param {number} index - Blade variant 0–3
+ * @returns {HTMLCanvasElement}
+ */
+export function getGrassBladeTexture(index) {
+  const c = document.createElement('canvas');
+  c.width = PT;
+  c.height = PT;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const BLADES = [
+    // Blade 0: Tall, leans slightly left
+    {
+      grid: [
+        '................',
+        '................',
+        '..g.............',
+        '..gg............',
+        '..gGg...........',
+        '..gGg...........',
+        '..gGg...........',
+        '...gGg..........',
+        '...gGg..........',
+        '...gGg..........',
+        '....gg..........',
+        '....g...........',
+        '................',
+        '................',
+        '................',
+        '................',
+      ],
+      colors: { 'g': '#6BAA4E', 'G': '#4B8A3E' },
+    },
+    // Blade 1: Medium, straight
+    {
+      grid: [
+        '................',
+        '................',
+        '.......g........',
+        '......ggg.......',
+        '......gGg.......',
+        '......gGg.......',
+        '......gGg.......',
+        '......gGg.......',
+        '......ggg.......',
+        '.......g........',
+        '................',
+        '................',
+        '................',
+        '................',
+        '................',
+        '................',
+      ],
+      colors: { 'g': '#5A9E4E', 'G': '#3D7A33' },
+    },
+    // Blade 2: Tall, leans slightly right
+    {
+      grid: [
+        '................',
+        '................',
+        '...........g....',
+        '..........gg....',
+        '..........gGg...',
+        '..........gGg...',
+        '..........gGg...',
+        '..........gGg...',
+        '..........gGg...',
+        '..........gGg...',
+        '...........gg...',
+        '...........g....',
+        '................',
+        '................',
+        '................',
+        '................',
+      ],
+      colors: { 'g': '#7BBA5E', 'G': '#5A9E4E' },
+    },
+    // Blade 3: Short, slightly darker
+    {
+      grid: [
+        '................',
+        '................',
+        '................',
+        '.......g........',
+        '......ggg.......',
+        '......gGg.......',
+        '......gGg.......',
+        '......gGg.......',
+        '......ggg.......',
+        '.......g........',
+        '................',
+        '................',
+        '................',
+        '................',
+        '................',
+        '................',
+      ],
+      colors: { 'g': '#4B8A3E', 'G': '#2D6A2E' },
+    },
+  ];
+
+  const blade = BLADES[index % BLADES.length];
+  drawPlantPixelArt(ctx, blade.grid, blade.colors);
   return c;
 }
 
